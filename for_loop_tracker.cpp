@@ -145,7 +145,6 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 	indexVal = builder.CreateAdd(indexVal, one);
 	builder.CreateStore(indexVal, index);
 	builder.CreateBr(ForLoopEntryBB);
-
 	
 	/// ForLoopExitBB
 	builder.SetInsertPoint(ForLoopExitBB);
