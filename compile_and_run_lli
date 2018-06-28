@@ -1,0 +1,14 @@
+#! /usr/bin/env bash 
+
+SOURCE_FILE_NAME=$1
+Var=$2
+SST_MACRO_SOURCE_HOME=/Users/gvanmou/Programs/source/sstmacro-8.0.0
+
+echo "Compiling the source files..."
+# Compile (-fno-use-cxa-atexit related to the initialization of libstdc++)
+llvm-g++ $SOURCE_FILE_NAME.cpp -S -emit-llvm -fno-use-cxa-atexit -std=c++11 \
+	-I$SST_MACRO_SOURCE_HOME/bin \
+	-I$CLANG_HOME/include
+
+# Run
+lli $SOURCE_FILE_NAME.ll $Var

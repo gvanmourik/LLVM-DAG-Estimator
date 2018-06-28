@@ -1,0 +1,4 @@
+# File types
+*.ll
+
+.DS_Store
