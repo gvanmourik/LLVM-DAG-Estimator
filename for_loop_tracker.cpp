@@ -3,6 +3,7 @@
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/MCJIT.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
@@ -17,6 +18,7 @@
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Transforms/Scalar.h>
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
@@ -24,33 +26,11 @@
 #include <vector>
 #include <iostream>
 
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+// #include "LoopAnalysis.h"
+
 
 using namespace llvm;
-
-// From SST-Macro
-// struct Loop {
-// 	struct Body {
-//   		int depth;
-// 	    int flops;
-// 	    int intops;
-// 	    int writeBytes;
-// 	    int readBytes;
-// 	    bool hasBranchPrediction() const 
-// 	    {
-// 	    	return branchPrediction.size() > 0;
-// 	    }
-// 	    std::string branchPrediction;
-// 	    std::list<Loop> subLoops;
-// 	    Body() : flops(0), intops(0), readBytes(0), writeBytes(0) {}
-//   	};
-
-//   	std::string tripCount;
-//   	Body body;
-//   	Loop(int depth)
-//   	{
-//     	body.depth = depth;
-//   	}
-// };
 
 
 /// Function declarations
@@ -66,19 +46,33 @@ int main(int argc, char* argv[])
 	/// LLVM IR Variables
 	static LLVMContext context;
 	static IRBuilder<> builder(context);
-	std::unique_ptr<Module> mainModule( new Module("genForLoopModule", context) );
+	std::unique_ptr<Module> mainModule( new Module("ForLoopFncModule", context) );
 	Module *module = mainModule.get();
 	InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
 
+	/// Function pass manager setup
+	static std::unique_ptr<legacy::FunctionPassManager> FPM;
+	FPM = make_unique<legacy::FunctionPassManager>(module);
+	FPM->add( createInstructionCombiningPass(true) );
+	FPM->add( createReassociatePass() );
+	// FPM->add( LoopAnalysis() ); //custom pass
+	FPM->doInitialization();
+
 	/// Returned function
-	Function *genForLoop = GenForLoop( context, builder, module, N );
+	Function *ForLoopFnc = GenForLoop( context, builder, module, N );
+		
+	outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //Before passes
+	FPM->run(*ForLoopFnc);
+	outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //After passes
+
 
 	/// Create a JIT
 	std::string collectedErrors;
 	ExecutionEngine *engine = 
 		EngineBuilder(std::move(mainModule))
 		.setErrorStr(&collectedErrors)
+		// .setUseMCJIT(true)
 		.setEngineKind(EngineKind::JIT)
 		.create();
 
@@ -91,16 +85,16 @@ int main(int argc, char* argv[])
 	}
 
 	std::vector<GenericValue> Args(0); // Empty vector as no args are passed
-	GenericValue value = engine->runFunction(genForLoop, Args);
-	// Loop::Body* function_ptr = (Loop::Body*)engine->getFunctionAddress(genForLoop->getName());
+	GenericValue value = engine->runFunction(ForLoopFnc, Args);
+	// Loop::Body* function_ptr = (Loop::Body*)engine->getFunctionAddress(ForLoopFnc->getName());
 	// if (function_ptr == nullptr)
 	// {
-	// 	errs() << "Failed to collect the compiled function: " << genForLoop->getName() << "\n";
+	// 	errs() << "Failed to collect the compiled function: " << ForLoopFnc->getName() << "\n";
 	// 	return 1;
 	// }
 
 	/// Output IR module
-	outs() << "\n" << *module;
+	// outs() << "\n" << *module;
 
 
 	return 0;
@@ -108,21 +102,21 @@ int main(int argc, char* argv[])
 
 Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters)
 {
-	Function *genForLoop = 
-		cast<Function>( module->getOrInsertFunction("genForLoop", Type::getInt32Ty(context)) );
+	Function *ForLoopFnc = 
+		cast<Function>( module->getOrInsertFunction("ForLoopFnc", Type::getInt32Ty(context)) );
 	// FunctionType *funcType = FunctionType::get(builder.getInt32Ty(), args, false);
-	// Function *genForLoop = Function::Create(funcType, Function::ExternalLinkage, "genForLoopFunc", module);
+	// Function *ForLoopFnc = Function::Create(funcType, Function::ExternalLinkage, "ForLoopFncFunc", module);
 
 	Value* N = ConstantInt::get(builder.getInt32Ty(), iters);
 	Value* zero = ConstantInt::get(builder.getInt32Ty(), 0);
 	Value* one = ConstantInt::get(builder.getInt32Ty(), 1);
 
 	/// BBs
-	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", genForLoop);
-	BasicBlock *ForLoopEntryBB = BasicBlock::Create(context, "forLoopEntry", genForLoop);
-	BasicBlock *ForLoopBodyBB = BasicBlock::Create(context, "forLoopBody", genForLoop);
-	BasicBlock *ForLoopExitBB = BasicBlock::Create(context, "forLoopExit", genForLoop);
-	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", genForLoop);
+	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", ForLoopFnc);
+	BasicBlock *ForLoopEntryBB = BasicBlock::Create(context, "forLoopEntry", ForLoopFnc);
+	BasicBlock *ForLoopBodyBB = BasicBlock::Create(context, "forLoopBody", ForLoopFnc);
+	BasicBlock *ForLoopExitBB = BasicBlock::Create(context, "forLoopExit", ForLoopFnc);
+	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", ForLoopFnc);
 	
 	/// Variables
 	Value *ifIndexLTN, *index, *indexVal, *returnValue;
@@ -157,5 +151,5 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 	ReturnInst::Create(context, returnValue, ExitBB);
 
 
-	return genForLoop;
+	return ForLoopFnc;
 }

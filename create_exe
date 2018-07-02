@@ -1,0 +1,28 @@
+#! /usr/bin/env bash 
+
+SOURCE_FILE_NAME=$1
+EXE_NAME=$2
+CC=clang++
+CLANG_BUILD_HOME=/Users/gvanmou/Programs/source/llvm-clang-6.0.0/build/
+
+echo "Compiling..."
+$CC $SOURCE_FILE_NAME.cpp -fno-rtti -I$CLANG_HOME/include -c -o $SOURCE_FILE_NAME.o \
+	`llvm-config --cxxflags`
+
+echo "Linking..."
+$CC -w -fno-use-cxa-atexit -fno-rtti \
+	`llvm-config --cxxflags --ldflags --system-libs --libs all core mcjit native` \
+	-rdynamic \
+	-I$CLANG_HOME/include -o $EXE_NAME $SOURCE_FILE_NAME.o
+
+echo "Cleaning up..."
+rm $SOURCE_FILE_NAME.o 
+
+echo "Ready to run at [ ./$EXE_NAME ]"
+
+# Run
+# echo "Running the compiled LLVM IR with lli..."
+# lli $SOURCE_FILE_NAME.ll $input
+
+# Opt
+# opt -load $CLANG_BUILD_HOME/lib/LoopAnalysis.dylib -loopAnalysis -disable-output -time-passes $SOURCE_FILE_NAME.ll

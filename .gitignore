@@ -1,4 +1,7 @@
 # File types
 *.ll
 
+# Exe
+run_loop_tracker
+
 .DS_Store
