@@ -106,43 +106,75 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 
 	/// BBs
 	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", ForLoopFnc);
-	BasicBlock *ForLoopEntryBB = BasicBlock::Create(context, "forLoopEntry", ForLoopFnc);
-	BasicBlock *ForLoopBodyBB = BasicBlock::Create(context, "forLoopBody", ForLoopFnc);
-	BasicBlock *ForLoopExitBB = BasicBlock::Create(context, "forLoopExit", ForLoopFnc);
+	BasicBlock *ForLoop1EntryBB = BasicBlock::Create(context, "forLoop1Entry", ForLoopFnc);
+	BasicBlock *ForLoop1BodyBB = BasicBlock::Create(context, "forLoop1Body", ForLoopFnc);
+		BasicBlock *ForLoop2EntryBB = BasicBlock::Create(context, "forLoop2Entry");
+		BasicBlock *ForLoop2BodyBB = BasicBlock::Create(context, "forLoop2Body");
+		BasicBlock *ForLoop2ExitBB = BasicBlock::Create(context, "forLoop2Exit");
+	BasicBlock *ForLoop1ExitBB = BasicBlock::Create(context, "forLoop1Exit", ForLoopFnc);
 	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", ForLoopFnc);
 	
 	/// Variables
-	Value *ifIndexLTN, *index, *indexVal, *returnValue;
+	Value *ifiLTN, *ifjLTN, *i, *j, *iVal, *jVal, *counter, *counterVal, *returnValue;
 
 
 	/// EntryBB
 	builder.SetInsertPoint(EntryBB);
-	index = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "index");
-	builder.CreateStore(zero, index);
-	builder.CreateBr(ForLoopEntryBB);
+	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
+	j = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "j");
+	counter = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "counter");
+	builder.CreateStore(zero, i);
+	builder.CreateStore(zero, j);
+	builder.CreateStore(zero, counter);
+	builder.CreateBr(ForLoop1EntryBB);
 
-	/// ForLoopEntryBB
-	builder.SetInsertPoint(ForLoopEntryBB);
-	indexVal = builder.CreateLoad(index, "indexVal");
-	ifIndexLTN = builder.CreateICmpULT(indexVal, N, "ifIndexLTN");
-	builder.CreateCondBr(ifIndexLTN, ForLoopBodyBB, ForLoopExitBB); //end of EntryBB
+	/// ForLoop1EntryBB
+	builder.SetInsertPoint(ForLoop1EntryBB);
+	iVal = builder.CreateLoad(i, "iVal");
+	ifiLTN = builder.CreateICmpULT(iVal, N, "ifiLTN");
+	builder.CreateCondBr(ifiLTN, ForLoop1BodyBB, ForLoop1ExitBB);
 	
-	/// ForLoopBodyBB
-	builder.SetInsertPoint(ForLoopBodyBB);
-	indexVal = builder.CreateAdd(indexVal, one);
-	builder.CreateStore(indexVal, index);
-	builder.CreateBr(ForLoopEntryBB);
+	/// ForLoop1BodyBB
+	builder.SetInsertPoint(ForLoop1BodyBB);
+	iVal = builder.CreateAdd(iVal, one);
+	builder.CreateStore(iVal, i);
+	builder.CreateBr(ForLoop2EntryBB);
+
+		/// ForLoop2EntryBB
+		ForLoopFnc->getBasicBlockList().push_back(ForLoop2EntryBB);
+		builder.SetInsertPoint(ForLoop2EntryBB);
+		jVal = builder.CreateLoad(j, "jVal");
+		ifjLTN = builder.CreateICmpULT(jVal, N, "ifjLTN");
+		builder.CreateCondBr(ifjLTN, ForLoop2BodyBB, ForLoop2ExitBB);
+
+		/// ForLoop2BodyBB
+		ForLoopFnc->getBasicBlockList().push_back(ForLoop2BodyBB);
+		builder.SetInsertPoint(ForLoop2BodyBB);
+		counterVal = builder.CreateLoad(counter, "counterVal");
+		jVal = builder.CreateAdd(jVal, one);
+		counterVal = builder.CreateAdd(counterVal, one);
+		builder.CreateStore(jVal, j);
+		builder.CreateStore(counterVal, counter);
+		builder.CreateBr(ForLoop2EntryBB);
+
+		/// ForLoop2ExitBB
+		ForLoopFnc->getBasicBlockList().push_back(ForLoop2ExitBB);
+		builder.SetInsertPoint(ForLoop2ExitBB);
+		builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "dummyAlloca");
+		builder.CreateBr(ForLoop1EntryBB);
 	
-	/// ForLoopExitBB
-	builder.SetInsertPoint(ForLoopExitBB);
+	/// ForLoop1ExitBB
+	builder.SetInsertPoint(ForLoop1ExitBB);
 	builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "dummyAlloca");
 	builder.CreateBr(ExitBB);
 
 	/// ExitBB
 	builder.SetInsertPoint(ExitBB);
-	returnValue = builder.CreateLoad(index, "finalIndex");
+	returnValue = builder.CreateLoad(counter, "finalCount");
 	ReturnInst::Create(context, returnValue, ExitBB);
 
 
 	return ForLoopFnc;
 }
+
+
