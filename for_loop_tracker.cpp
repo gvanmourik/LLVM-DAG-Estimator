@@ -108,9 +108,9 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", ForLoopFnc);
 	BasicBlock *ForLoop1EntryBB = BasicBlock::Create(context, "forLoop1Entry", ForLoopFnc);
 	BasicBlock *ForLoop1BodyBB = BasicBlock::Create(context, "forLoop1Body", ForLoopFnc);
-		BasicBlock *ForLoop2EntryBB = BasicBlock::Create(context, "forLoop2Entry");
-		BasicBlock *ForLoop2BodyBB = BasicBlock::Create(context, "forLoop2Body");
-		BasicBlock *ForLoop2ExitBB = BasicBlock::Create(context, "forLoop2Exit");
+		BasicBlock *ForLoop2EntryBB = BasicBlock::Create(context, "forLoop2Entry", ForLoopFnc);
+		BasicBlock *ForLoop2BodyBB = BasicBlock::Create(context, "forLoop2Body", ForLoopFnc);
+		BasicBlock *ForLoop2ExitBB = BasicBlock::Create(context, "forLoop2Exit", ForLoopFnc);
 	BasicBlock *ForLoop1ExitBB = BasicBlock::Create(context, "forLoop1Exit", ForLoopFnc);
 	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", ForLoopFnc);
 	
@@ -141,14 +141,12 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 	builder.CreateBr(ForLoop2EntryBB);
 
 		/// ForLoop2EntryBB
-		ForLoopFnc->getBasicBlockList().push_back(ForLoop2EntryBB);
 		builder.SetInsertPoint(ForLoop2EntryBB);
 		jVal = builder.CreateLoad(j, "jVal");
 		ifjLTN = builder.CreateICmpULT(jVal, N, "ifjLTN");
 		builder.CreateCondBr(ifjLTN, ForLoop2BodyBB, ForLoop2ExitBB);
 
 		/// ForLoop2BodyBB
-		ForLoopFnc->getBasicBlockList().push_back(ForLoop2BodyBB);
 		builder.SetInsertPoint(ForLoop2BodyBB);
 		counterVal = builder.CreateLoad(counter, "counterVal");
 		jVal = builder.CreateAdd(jVal, one);
@@ -158,7 +156,6 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 		builder.CreateBr(ForLoop2EntryBB);
 
 		/// ForLoop2ExitBB
-		ForLoopFnc->getBasicBlockList().push_back(ForLoop2ExitBB);
 		builder.SetInsertPoint(ForLoop2ExitBB);
 		builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "dummyAlloca");
 		builder.CreateBr(ForLoop1EntryBB);
