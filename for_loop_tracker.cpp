@@ -19,6 +19,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/InstCombine/InstCombine.h>
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
@@ -26,8 +27,7 @@
 #include <vector>
 #include <iostream>
 
-#include <llvm/Transforms/InstCombine/InstCombine.h>
-#include "LoopAnalysis.h"
+#include "LoopAnalysisPass.h"
 
 
 using namespace llvm;
