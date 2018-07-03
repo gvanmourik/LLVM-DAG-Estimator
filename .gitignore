@@ -1,8 +1,13 @@
-# File types
+## File types
 *.ll
 *.o
 
-# Exe
+## Exe
 run_loop_tracker
+cfg_convert_and_move
 
+## Directories
+cfgImages/
+
+## Other
 .DS_Store
