@@ -13,7 +13,9 @@ echo "Linking..."
 $CC -w -fno-use-cxa-atexit -fno-rtti \
 	`llvm-config --cxxflags --ldflags --system-libs --libs all core mcjit native` \
 	-rdynamic \
-	-I$CLANG_HOME/include -o $EXE_NAME $SOURCE_FILE_NAME.o
+	-I$CLANG_HOME/include \
+	-I./ \
+	-o $EXE_NAME $SOURCE_FILE_NAME.o
 
 echo "Cleaning up..."
 rm $SOURCE_FILE_NAME.o 

@@ -27,7 +27,7 @@
 #include <iostream>
 
 #include <llvm/Transforms/InstCombine/InstCombine.h>
-// #include "LoopAnalysis.h"
+#include "LoopAnalysis.h"
 
 
 using namespace llvm;
