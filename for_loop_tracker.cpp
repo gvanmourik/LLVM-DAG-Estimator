@@ -18,6 +18,7 @@
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Analysis/CFGPrinter.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include <algorithm>
@@ -69,6 +70,7 @@ int main(int argc, char* argv[])
 	/// Analysis passes
 	FPM = make_unique<legacy::FunctionPassManager>(module);
 	FPM->add( createLoopAnalysisPass() ); //custom pass
+	FPM->add( createCFGPrinterLegacyPassPass() );
 	FPM->doInitialization();
 	FPM->run(*ForLoopFnc);
 
@@ -88,6 +90,11 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
+	std::vector<GenericValue> Args(0); // Empty vector as no args are passed
+	GenericValue value = engine->runFunction(ForLoopFnc, Args);
+
+	outs() << "Return value = " << value.IntVal << "\n";
+
 	/// Output IR module
 	// outs() << "\n" << *module;
 
@@ -103,19 +110,25 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 	Value* N = ConstantInt::get(builder.getInt32Ty(), iters);
 	Value* zero = ConstantInt::get(builder.getInt32Ty(), 0);
 	Value* one = ConstantInt::get(builder.getInt32Ty(), 1);
+	Value* two = ConstantInt::get(builder.getInt32Ty(), 2);
+	Value* three = ConstantInt::get(builder.getInt32Ty(), 3);
 
-	/// BBs
+	/// BBs Outline
 	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", ForLoopFnc);
 	BasicBlock *ForLoop1EntryBB = BasicBlock::Create(context, "forLoop1Entry", ForLoopFnc);
 	BasicBlock *ForLoop1BodyBB = BasicBlock::Create(context, "forLoop1Body", ForLoopFnc);
 		BasicBlock *ForLoop2EntryBB = BasicBlock::Create(context, "forLoop2Entry", ForLoopFnc);
 		BasicBlock *ForLoop2BodyBB = BasicBlock::Create(context, "forLoop2Body", ForLoopFnc);
+			BasicBlock *IfEntryBB = BasicBlock::Create(context, "ifEntry", ForLoopFnc);
+			BasicBlock *ThenBB = BasicBlock::Create(context, "then", ForLoopFnc);
+			BasicBlock *ElseBB = BasicBlock::Create(context, "else", ForLoopFnc);
 		BasicBlock *ForLoop2ExitBB = BasicBlock::Create(context, "forLoop2Exit", ForLoopFnc);
 	BasicBlock *ForLoop1ExitBB = BasicBlock::Create(context, "forLoop1Exit", ForLoopFnc);
 	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", ForLoopFnc);
 	
 	/// Variables
-	Value *ifiLTN, *ifjLTN, *i, *j, *iVal, *jVal, *counter, *counterVal, *returnValue;
+	Value *ifiLTN, *ifjLTN, *ifEqual, *i, *j, *iVal, *jVal, 
+		  *counter, *counterVal, *cmpVal, *returnValue;
 
 
 	/// EntryBB
@@ -148,12 +161,28 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 
 		/// ForLoop2BodyBB
 		builder.SetInsertPoint(ForLoop2BodyBB);
-		counterVal = builder.CreateLoad(counter, "counterVal");
 		jVal = builder.CreateAdd(jVal, one);
-		counterVal = builder.CreateAdd(counterVal, one);
 		builder.CreateStore(jVal, j);
-		builder.CreateStore(counterVal, counter);
-		builder.CreateBr(ForLoop2EntryBB);
+		builder.CreateBr(IfEntryBB);
+
+			/// IfEntryBB
+			builder.SetInsertPoint(IfEntryBB);
+			counterVal = builder.CreateLoad(counter, "counterVal");
+			cmpVal = builder.CreateAdd(builder.CreateMul(counterVal, two), one);
+			cmpVal = builder.CreateSRem(cmpVal, three, "cmpVal");
+			ifEqual = builder.CreateICmpEQ(cmpVal, zero, "ifEqual");
+			builder.CreateCondBr(ifEqual, ThenBB, ElseBB);
+
+			/// ThenBB
+			builder.SetInsertPoint(ThenBB);
+			counterVal = builder.CreateAdd(counterVal, one);
+			builder.CreateStore(counterVal, counter);
+			builder.CreateBr(ForLoop2EntryBB);
+
+			/// ElseBB
+			builder.SetInsertPoint(ElseBB);
+			builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "dummyAlloca");
+			builder.CreateBr(ForLoop2EntryBB);
 
 		/// ForLoop2ExitBB
 		builder.SetInsertPoint(ForLoop2ExitBB);
