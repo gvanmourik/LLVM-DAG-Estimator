@@ -56,16 +56,21 @@ int main(int argc, char* argv[])
 	FPM = make_unique<legacy::FunctionPassManager>(module);
 	FPM->add( createInstructionCombiningPass(true) );
 	FPM->add( createReassociatePass() );
-	// FPM->add( LoopAnalysis() ); //custom pass
 	FPM->doInitialization();
 
 	/// Returned function
 	Function *ForLoopFnc = GenForLoop( context, builder, module, N );
-		
+	
+	/// Transform passes	
 	outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //Before passes
 	FPM->run(*ForLoopFnc);
 	outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //After passes
 
+	/// Analysis passes
+	FPM = make_unique<legacy::FunctionPassManager>(module);
+	FPM->add( createLoopAnalysisPass() ); //custom pass
+	FPM->doInitialization();
+	FPM->run(*ForLoopFnc);
 
 	/// Create a JIT
 	std::string collectedErrors;
