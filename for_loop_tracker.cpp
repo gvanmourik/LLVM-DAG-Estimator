@@ -77,7 +77,6 @@ int main(int argc, char* argv[])
 	ExecutionEngine *engine = 
 		EngineBuilder(std::move(mainModule))
 		.setErrorStr(&collectedErrors)
-		// .setUseMCJIT(true)
 		.setEngineKind(EngineKind::JIT)
 		.create();
 
@@ -88,15 +87,6 @@ int main(int argc, char* argv[])
 		perror(error.c_str());
 		return -1;
 	}
-
-	std::vector<GenericValue> Args(0); // Empty vector as no args are passed
-	GenericValue value = engine->runFunction(ForLoopFnc, Args);
-	// Loop::Body* function_ptr = (Loop::Body*)engine->getFunctionAddress(ForLoopFnc->getName());
-	// if (function_ptr == nullptr)
-	// {
-	// 	errs() << "Failed to collect the compiled function: " << ForLoopFnc->getName() << "\n";
-	// 	return 1;
-	// }
 
 	/// Output IR module
 	// outs() << "\n" << *module;
@@ -109,8 +99,6 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 {
 	Function *ForLoopFnc = 
 		cast<Function>( module->getOrInsertFunction("ForLoopFnc", Type::getInt32Ty(context)) );
-	// FunctionType *funcType = FunctionType::get(builder.getInt32Ty(), args, false);
-	// Function *ForLoopFnc = Function::Create(funcType, Function::ExternalLinkage, "ForLoopFncFunc", module);
 
 	Value* N = ConstantInt::get(builder.getInt32Ty(), iters);
 	Value* zero = ConstantInt::get(builder.getInt32Ty(), 0);
