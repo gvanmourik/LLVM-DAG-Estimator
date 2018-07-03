@@ -1,5 +1,6 @@
 # File types
 *.ll
+*.o
 
 # Exe
 run_loop_tracker
