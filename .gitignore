@@ -1,6 +1,7 @@
 ## File types
 *.ll
 *.o
+*.rtf
 
 ## Exe
 run_loop_tracker
@@ -11,3 +12,4 @@ cfgImages/
 
 ## Other
 .DS_Store
+
