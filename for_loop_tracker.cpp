@@ -64,11 +64,10 @@ int main(int argc, char* argv[])
 	
 	/// Transform passes	
 	outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //Before passes
-	// FPM->run(*ForLoopFnc);
-	// outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //After passes
+	FPM->run(*ForLoopFnc);
+	outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //After passes
 
 	/// Analysis passes
-	
 	FPM = make_unique<legacy::FunctionPassManager>(module);
 	FPM->add( createLoopInfoAnalysisPass() ); //custom pass
 	FPM->add( createCFGPrinterLegacyPassPass() );
