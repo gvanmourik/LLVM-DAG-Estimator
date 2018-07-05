@@ -2,6 +2,7 @@
 *.ll
 *.o
 *.rtf
+*.dot
 
 ## Exe
 run_loop_tracker
