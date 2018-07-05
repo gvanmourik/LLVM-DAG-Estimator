@@ -1,21 +1,31 @@
-#ifndef DEBUG_TYPE 
-#define DEBUG_TYPE "loopAnalysisPass"
+#ifndef LOOP_INFO_ANALYSIS_PASS_H
+#define LOOP_INFO_ANALYSIS_PASS_H
+#ifndef DEBUG_TYPE
+#define DEBUG_TYPE "LoopInfoAnalysisPass"
 
+#include <map>
 #include <llvm/IR/Function.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include "LoopInfoAnalysis.h"
+
 using namespace llvm;
 
+
+/// Global Variables
+std::map<Loop*, LoopInfoAnalysis*> analysis;
+
+/// Functions
 void emitLoopInfo(Loop *L);
 
 namespace 
 {
-	struct LoopAnalysisPass : public FunctionPass {
+	struct LoopInfoAnalysisPass : public FunctionPass {
 		int opCount = 0;
 		bool opCodeDNE;
 		static char ID;
-		LoopAnalysisPass() : FunctionPass(ID) {}
+		LoopInfoAnalysisPass() : FunctionPass(ID) {}
 
 		/// Used to call other passes
 		void getAnalysisUsage(AnalysisUsage &AU) const
@@ -35,6 +45,7 @@ namespace
 			/// Use LoopInfo to iterate over each loop and sub-loop
 			for (LoopInfo::iterator iterL=LI.begin(), endLI=LI.end(); iterL != endLI; ++iterL)
 			{
+				analysis[*iterL] = new LoopInfoAnalysis(*iterL);
 				emitLoopInfo(*iterL);
 			}
 			outs() << "------------------------------------\n";
@@ -45,22 +56,19 @@ namespace
 
 	};
 
-} //unnamed namespace (internal linkage)
+}
 
-char LoopAnalysisPass::ID = 0;
+/// typeid of pass
+char LoopInfoAnalysisPass::ID = 0;
 
 /// Required in order to use with the FPM
-FunctionPass *createLoopAnalysisPass() {
-	return new LoopAnalysisPass();
+FunctionPass *createLoopInfoAnalysisPass() {
+	return new LoopInfoAnalysisPass();
 }
 
 /// Supports nested loops
 void emitLoopInfo(Loop *L)
 {
-	unsigned opCount = 0;
-	unsigned bbCount = 0;
-	unsigned readCount = 0;
-	unsigned writeCount = 0;
 
 	for (Loop::block_iterator iterB=L->block_begin(); iterB != L->block_end(); ++iterB)
 	{
@@ -71,37 +79,29 @@ void emitLoopInfo(Loop *L)
 			Instruction *I = &*iterI;
 			switch ( I->getOpcode() ) {
 				case (Instruction::Load):
-					// outs() << "recording read(" << L->getLoopDepth() << ")...\n";
-					// I->dump();
-					// outs() << "\n";
-					readCount++;
+					analysis[L]->readCount++;
 					break;
 				case (Instruction::Store):
-					// outs() << "recording write(" << L->getLoopDepth() << ")...\n";
-					// I->dump();
-					// outs() << "\n";
-					writeCount++;
+					analysis[L]->writeCount++;
 					break;
 				default:
 					break;
-			} 
-			opCount++;
+			}
+			analysis[L]->opCount++;
 		}
-		bbCount++;
+		analysis[L]->bbCount++;
 	}
 
-	outs() << "\t\t---> Loop Depth " << L->getLoopDepth() << " <---\n";
-	outs() << "\t\topCount = " << opCount << "\n";
-	outs() << "\t\tbbCount = " << bbCount << "\n";
-	outs() << "\t\treadCount = " << readCount << "\n";
-	outs() << "\t\twriteCount = " << writeCount << "\n";
+	analysis[L]->printAnalysis();
 
 	std::vector<Loop*> subLoops = L->getSubLoops();
 	for (Loop::iterator iterSL=subLoops.begin(), lastSL=subLoops.end(); iterSL != lastSL; ++iterSL)
 	{
+		analysis[*iterSL] = new LoopInfoAnalysis(*iterSL);
 		emitLoopInfo(*iterSL);
 	}
 }
 
 
 #endif /* DEBUG_TYPE */
+#endif /* LOOP_INFO_ANALYSIS_PASS_H */

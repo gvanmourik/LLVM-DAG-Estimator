@@ -28,7 +28,7 @@
 #include <vector>
 #include <iostream>
 
-#include "LoopAnalysisPass.h"
+#include "LoopInfoAnalysisPass.h"
 
 
 using namespace llvm;
@@ -64,12 +64,13 @@ int main(int argc, char* argv[])
 	
 	/// Transform passes	
 	outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //Before passes
-	FPM->run(*ForLoopFnc);
-	outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //After passes
+	// FPM->run(*ForLoopFnc);
+	// outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //After passes
 
 	/// Analysis passes
+	
 	FPM = make_unique<legacy::FunctionPassManager>(module);
-	FPM->add( createLoopAnalysisPass() ); //custom pass
+	FPM->add( createLoopInfoAnalysisPass() ); //custom pass
 	FPM->add( createCFGPrinterLegacyPassPass() );
 	FPM->doInitialization();
 	FPM->run(*ForLoopFnc);
@@ -169,7 +170,7 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 			builder.SetInsertPoint(IfEntryBB);
 			counterVal = builder.CreateLoad(counter, "counterVal");
 			cmpVal = builder.CreateAdd(builder.CreateMul(counterVal, two), one);
-			cmpVal = builder.CreateSRem(cmpVal, three, "cmpVal");
+			cmpVal = builder.CreateURem(cmpVal, three, "cmpVal");
 			ifEqual = builder.CreateICmpEQ(cmpVal, zero, "ifEqual");
 			builder.CreateCondBr(ifEqual, ThenBB, ElseBB);
 
