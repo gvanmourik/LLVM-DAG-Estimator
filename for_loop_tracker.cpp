@@ -19,6 +19,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Analysis/CFGPrinter.h>
+#include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include <algorithm>
@@ -28,8 +29,9 @@
 #include <vector>
 #include <iostream>
 
-#include "LoopInfoAnalysisPass.h"
+#include <typeinfo>
 
+#include "LoopInfoAnalysisLegacyPass.h"
 
 using namespace llvm;
 
@@ -52,6 +54,10 @@ int main(int argc, char* argv[])
 	InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
 
+	// test
+	FunctionAnalysisManager *FAM;
+	FAM = new FunctionAnalysisManager();
+
 	/// Function pass manager setup
 	static std::unique_ptr<legacy::FunctionPassManager> FPM;
 	FPM = make_unique<legacy::FunctionPassManager>(module);
@@ -68,10 +74,14 @@ int main(int argc, char* argv[])
 	outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //After passes
 
 	/// Analysis passes
-	FPM = make_unique<legacy::FunctionPassManager>(module);
+	// FPM = make_unique<legacy::FunctionPassManager>(module);
 	FPM->add( createLoopInfoAnalysisPass() ); //custom pass
-	FPM->add( createCFGPrinterLegacyPassPass() );
+	// FPM->add( createCFGPrinterLegacyPassPass() );
 	FPM->doInitialization();
+
+	// outs() << "LoopInfoAnalysisPass::ID() = " << LoopInfoAnalysisPass::ID() << "\n";
+	// auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
+	
 	FPM->run(*ForLoopFnc);
 
 	/// Create a JIT
