@@ -33,7 +33,17 @@ class LoopInfoAnalysis : public LoopInfo
 			outs() << "\t\tbbCount = " << bbCount << "\n";
 			outs() << "\t\treadCount = " << readCount << "\n";
 			outs() << "\t\twriteCount = " << writeCount << "\n";
-		}		
+		}
+
+		LoopInfoAnalysis& operator=(const LoopInfoAnalysis &LA) 
+		{ 
+			opCount = LA.opCount;
+			bbCount = LA.bbCount;
+			readCount = LA.readCount;
+			writeCount = LA.writeCount;
+
+			return *this;
+		}
 
 
 };
