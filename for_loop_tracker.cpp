@@ -3,7 +3,8 @@
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/MCJIT.h>
-#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/PassManager.h>
+// #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
@@ -15,12 +16,16 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/CFGPrinter.h>
 #include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Scalar/SROA.h>
+#include <llvm/Transforms/Utils/SimplifyInstructions.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include <algorithm>
 #include <cstdlib>
@@ -29,9 +34,9 @@
 #include <vector>
 #include <iostream>
 
-#include <typeinfo>
-
-#include "LoopInfoAnalysisLegacyPass.h"
+/// Custom analysis passes
+// #include <llvm/Analysis/LoopInfoAnalysisPass.h>
+// #include "LoopInfoAnalysisLegacyPass.h"
 
 using namespace llvm;
 
@@ -55,34 +60,44 @@ int main(int argc, char* argv[])
 	InitializeNativeTargetAsmPrinter();
 
 	// test
-	FunctionAnalysisManager *FAM;
-	FAM = new FunctionAnalysisManager();
+	bool DebugLogging = true;
+	FunctionPassManager *FPM = 
+		new FunctionPassManager(DebugLogging);
+	//INCORRECT!!!
+	FunctionAnalysisManager *FAM = 
+		new FunctionAnalysisManager(DebugLogging);
 
-	/// Function pass manager setup
-	static std::unique_ptr<legacy::FunctionPassManager> FPM;
-	FPM = make_unique<legacy::FunctionPassManager>(module);
-	FPM->add( createInstructionCombiningPass(true) );
-	FPM->add( createReassociatePass() );
-	FPM->doInitialization();
+
+	/// Function pass manager 
+	PassBuilder myPassBuilder;
+	*FPM = myPassBuilder.buildFunctionSimplificationPipeline(
+			PassBuilder::OptimizationLevel::O1, 
+			PassBuilder::ThinLTOPhase::None, 
+			DebugLogging);
+	// FPM->addPass( NoOpFunctionAnalysis() );
+	// FPM->addPass( SROA() );
+	// FPM->addPass( LoopVerifierPass() );
 
 	/// Returned function
 	Function *ForLoopFnc = GenForLoop( context, builder, module, N );
 	
 	/// Transform passes	
 	outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //Before passes
-	FPM->run(*ForLoopFnc);
+	FPM->run(*ForLoopFnc, *FAM);
 	outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //After passes
 
-	/// Analysis passes
-	// FPM = make_unique<legacy::FunctionPassManager>(module);
-	FPM->add( createLoopInfoAnalysisPass() ); //custom pass
-	// FPM->add( createCFGPrinterLegacyPassPass() );
-	FPM->doInitialization();
+	// FAM->getResult<LoopAnalysis>(*ForLoopFnc);
 
-	// outs() << "LoopInfoAnalysisPass::ID() = " << LoopInfoAnalysisPass::ID() << "\n";
+	/// Analysis passes
+	// auto &test = FAM->getResult<InstCombinePass>(*ForLoopFnc);
+	// FPM = make_unique<legacy::FunctionPassManager>(module);
+	// FPM->addPass( LoopInfoAnalysisPass() ); //custom pass
+	// FPM->add( createCFGPrinterLegacyPassPass() );
+	// FPM->doInitialization();
+
 	// auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
 	
-	FPM->run(*ForLoopFnc);
+	// FPM->run(*ForLoopFnc, *FAM);
 
 	/// Create a JIT
 	std::string collectedErrors;
