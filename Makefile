@@ -26,11 +26,13 @@ debug: CPPFLAGS += -DDEBUG -g
 debug: $(TARGET) 
 
 %.o : %.cpp
+	@echo "\nCompiling (this will take a few seconds)..."
 	$(CC) $(INCLUDES) $(CFLAGS) -o $@ -c $<
 
 $(TARGET) : $(OBJECT)
+	@echo "\nLinking..."
 	$(CC) -o $@ $^ $(INCLUDES) $(CXXFLAGS) $(LIBS)
 
 clean : $(OBJECT)
-	@echo Cleaning up...
+	@echo "Cleaning up..."
 	rm -f *.o $(TARGET)
