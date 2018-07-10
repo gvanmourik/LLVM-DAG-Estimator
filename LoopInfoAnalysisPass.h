@@ -27,16 +27,16 @@ public:
 
 	Analysis_t run(Function &function, FunctionAnalysisManager &FAM)
 	{
-		Analysis_t analysis;
-		calculateAnalysis(function, analysis, FAM);
+		analysis.clear();
+		gatherAnalysis(function, analysis, FAM);
 		return analysis;
 	}
 
 	/// Helper function
-	void calculateAnalysis(Function &function, Analysis_t &analysis, FunctionAnalysisManager &FAM)
+	void gatherAnalysis(Function &function, Analysis_t &analysis, FunctionAnalysisManager &FAM)
 	{
-		outs() << "------------------------------------\n";
-		outs() << "Loop Analysis Results:\n";
+		outs() << "----------------------------------------\n";
+		outs() << "Loop Analysis Results (pass):\n";
 		outs() << "\tFunction = " << function.getName() << "()" << "\n";
 
 		LoopInfo &LI = FAM.getResult<LoopAnalysis>(function);
@@ -47,7 +47,7 @@ public:
 			analysis[*iterL] = new LoopInfoAnalysis(*iterL);
 			emitLoopInfo(*iterL, analysis);
 		}
-		outs() << "------------------------------------\n";
+		outs() << "----------------------------------------\n";
 	}
 
 	/// Supports nested loops
@@ -84,6 +84,10 @@ public:
 			emitLoopInfo(*iterSL, analysis);
 		}
 	}
+
+private:
+	Analysis_t analysis;
+
 
 };
 
