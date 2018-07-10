@@ -59,26 +59,25 @@ int main(int argc, char* argv[])
 	InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
 
-	// test
-	bool DebugLogging = true;
+	// Function analysis and pass managers
+	bool DebugLogging = false;
 	FunctionPassManager *FPM = 
 		new FunctionPassManager(DebugLogging);
-	//INCORRECT!!!
 	FunctionAnalysisManager *FAM = 
 		new FunctionAnalysisManager(DebugLogging);
 
 
-	/// Function pass manager 
-	PassBuilder myPassBuilder;
-	*FPM = myPassBuilder.buildFunctionSimplificationPipeline(
-			PassBuilder::OptimizationLevel::O1, 
-			PassBuilder::ThinLTOPhase::None, 
-			DebugLogging);
-	// FPM->addPass( NoOpFunctionAnalysis() );
-	// FPM->addPass( SROA() );
-	// FPM->addPass( LoopVerifierPass() );
+	/// Add transform passes 
+	FPM->addPass( SROA() );
+	FPM->addPass( LoopVerifierPass() );
 
-	/// Returned function
+	/// Use the below method to register all added passes rather than 
+	/// passing in each individual pass as a lambda to register that pass.
+	/// [ example: FAM->registerPass([&]{ return SROA(); }) ]
+	PassBuilder myPassBuilder;
+	myPassBuilder.registerFunctionAnalyses(*FAM);
+
+	/// Returned IR function
 	Function *ForLoopFnc = GenForLoop( context, builder, module, N );
 	
 	/// Transform passes	
