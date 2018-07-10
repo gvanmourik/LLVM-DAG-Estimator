@@ -3,8 +3,6 @@
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/MCJIT.h>
-#include <llvm/IR/PassManager.h>
-// #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
@@ -35,14 +33,14 @@
 #include <iostream>
 
 /// Custom analysis passes
-// #include <llvm/Analysis/LoopInfoAnalysisPass.h>
-// #include "LoopInfoAnalysisLegacyPass.h"
+#include "LoopInfoAnalysisPass.h"
 
 using namespace llvm;
 
 
 /// Function declarations
 Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
+void print(Analysis_t &analysis);
 
 
 int main(int argc, char* argv[])
@@ -60,7 +58,7 @@ int main(int argc, char* argv[])
 	InitializeNativeTargetAsmPrinter();
 
 	// Function analysis and pass managers
-	bool DebugLogging = false;
+	bool DebugLogging = true;
 	FunctionPassManager *FPM = 
 		new FunctionPassManager(DebugLogging);
 	FunctionAnalysisManager *FAM = 
@@ -73,9 +71,9 @@ int main(int argc, char* argv[])
 
 	/// Use the below method to register all added passes rather than 
 	/// passing in each individual pass as a lambda to register that pass.
-	/// [ example: FAM->registerPass([&]{ return SROA(); }) ]
-	PassBuilder myPassBuilder;
-	myPassBuilder.registerFunctionAnalyses(*FAM);
+	/// [ example: FAM->registerPass([&]{ return SROA(); }); ]
+	PassBuilder passBuilder;
+	passBuilder.registerFunctionAnalyses(*FAM);
 
 	/// Returned IR function
 	Function *ForLoopFnc = GenForLoop( context, builder, module, N );
@@ -85,18 +83,13 @@ int main(int argc, char* argv[])
 	FPM->run(*ForLoopFnc, *FAM);
 	outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //After passes
 
-	// FAM->getResult<LoopAnalysis>(*ForLoopFnc);
 
-	/// Analysis passes
-	// auto &test = FAM->getResult<InstCombinePass>(*ForLoopFnc);
-	// FPM = make_unique<legacy::FunctionPassManager>(module);
-	// FPM->addPass( LoopInfoAnalysisPass() ); //custom pass
-	// FPM->add( createCFGPrinterLegacyPassPass() );
-	// FPM->doInitialization();
+	/// Custom analysis pass
+	FAM->registerPass([&]{ return LoopInfoAnalysisPass(); });
 
-	// auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
-	
-	// FPM->run(*ForLoopFnc, *FAM);
+	/// Collect and print result
+	auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
+	print(result); //prints in reverse order
 
 	/// Create a JIT
 	std::string collectedErrors;
@@ -118,9 +111,6 @@ int main(int argc, char* argv[])
 	GenericValue value = engine->runFunction(ForLoopFnc, Args);
 
 	outs() << "Return value = " << value.IntVal << "\n";
-
-	/// Output IR module
-	// outs() << "\n" << *module;
 
 
 	return 0;
@@ -225,6 +215,18 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 
 
 	return ForLoopFnc;
+}
+
+void print(Analysis_t &analysis)
+{
+	outs() << "----------------------------------------\n";
+	outs() << "Loop Analysis Results (main):\n";
+	for (Analysis_t::iterator i=analysis.begin(); i != analysis.end(); ++i)
+	{
+		i->second->printAnalysis();
+	}
+	outs() << "----------------------------------------\n";
+
 }
 
 
