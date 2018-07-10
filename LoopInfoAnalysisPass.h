@@ -1,118 +1,93 @@
 #ifndef LOOP_INFO_ANALYSIS_PASS_H
 #define LOOP_INFO_ANALYSIS_PASS_H
-#ifndef DEBUG_TYPE
-#define DEBUG_TYPE "LoopInfoAnalysisPass"
 
 #include <map>
 #include <llvm/IR/Function.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Support/raw_ostream.h>
 
-#include "LoopInfoAnalysis.h"
+#include <llvm/Analysis/LoopInfoAnalysis.h>
 
 using namespace llvm;
 
 /// Helpful typedef
 typedef std::map<Loop*, LoopInfoAnalysis*> Analysis_t;
 
-/// Functions
-void emitLoopInfo(Loop *L);
 
-namespace 
+class LoopInfoAnalysisPass : public AnalysisInfoMixin<LoopInfoAnalysisPass>
 {
-	class LoopInfoAnalysisPass : public FunctionPass 
+	friend AnalysisInfoMixin<LoopInfoAnalysisPass>;
+	static AnalysisKey Key;
+
+// private:
+// 	Analysis_t analysis;
+
+public:
+	using Result = Analysis_t;
+
+	Analysis_t run(Function &function, FunctionAnalysisManager &FAM)
 	{
-	private:
 		Analysis_t analysis;
+		calculateAnalysis(function, analysis, FAM);
+		return analysis;
+	}
 
-	public:
-		// static char ID;
+	/// Helper function
+	void calculateAnalysis(Function &function, Analysis_t &analysis, FunctionAnalysisManager &FAM)
+	{
+		outs() << "------------------------------------\n";
+		outs() << "Loop Analysis Results:\n";
+		outs() << "\tFunction = " << function.getName() << "()" << "\n";
 
-		LoopInfoAnalysisPass() : FunctionPass(ID) {}
-		~LoopInfoAnalysisPass(){ analysis.clear(); }
+		LoopInfo &LI = FAM.getResult<LoopAnalysis>(function);
 
-		/// Used to call other passes
-		void getAnalysisUsage(AnalysisUsage &AU) const override
+		/// Use LoopInfo to iterate over each loop and sub-loop
+		for (LoopInfo::iterator iterL=LI.begin(), endLI=LI.end(); iterL != endLI; ++iterL)
 		{
-			AU.addRequired<LoopInfoWrapperPass>();
-			AU.setPreservesAll();
+			analysis[*iterL] = new LoopInfoAnalysis(*iterL);
+			emitLoopInfo(*iterL, analysis);
 		}
+		outs() << "------------------------------------\n";
+	}
 
-		virtual bool runOnFunction(Function &function) override
+	/// Supports nested loops
+	void emitLoopInfo(Loop *L, Analysis_t &analysis)
+	{
+		for (Loop::block_iterator iterB=L->block_begin(); iterB != L->block_end(); ++iterB)
 		{
-			calculateAnalysis(function);
-
-			return false; //all analysis passes will return false
-		}
-
-		/// Clear between runs
-		void releaseMemory() override { analysis.clear(); }
-
-		/// Helper function
-		void calculateAnalysis(Function &function)
-		{
-			outs() << "------------------------------------\n";
-			outs() << "Loop Analysis Results:\n";
-			outs() << "\tFunction = " << function.getName() << "()" << "\n";
-
-			LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-
-			/// Use LoopInfo to iterate over each loop and sub-loop
-			for (LoopInfo::iterator iterL=LI.begin(), endLI=LI.end(); iterL != endLI; ++iterL)
-			{
-				analysis[*iterL] = new LoopInfoAnalysis(*iterL);
-				emitLoopInfo(*iterL);
-			}
-			outs() << "------------------------------------\n";
-		}
-
-		/// Supports nested loops
-		void emitLoopInfo(Loop *L)
-		{
-			for (Loop::block_iterator iterB=L->block_begin(); iterB != L->block_end(); ++iterB)
-			{
-				BasicBlock *BB = *iterB;
-				/// Iterate over each instruction(I) in a given BB
-				for (BasicBlock::iterator iterI = BB->begin(), end = BB->end(); iterI != end; ++iterI)
-				{	
-					Instruction *I = &*iterI;
-					switch ( I->getOpcode() ) {
-						case (Instruction::Load):
-							analysis[L]->readCount++;
-							break;
-						case (Instruction::Store):
-							analysis[L]->writeCount++;
-							break;
-						default:
-							break;
-					}
-					analysis[L]->opCount++;
+			BasicBlock *BB = *iterB;
+			/// Iterate over each instruction(I) in a given BB
+			for (BasicBlock::iterator iterI = BB->begin(), end = BB->end(); iterI != end; ++iterI)
+			{	
+				Instruction *I = &*iterI;
+				switch ( I->getOpcode() ) {
+					case (Instruction::Load):
+						analysis[L]->readCount++;
+						break;
+					case (Instruction::Store):
+						analysis[L]->writeCount++;
+						break;
+					default:
+						break;
 				}
-				analysis[L]->bbCount++;
+				analysis[L]->opCount++;
 			}
-
-			analysis[L]->printAnalysis();
-
-			std::vector<Loop*> subLoops = L->getSubLoops();
-			for (Loop::iterator iterSL=subLoops.begin(), lastSL=subLoops.end(); iterSL != lastSL; ++iterSL)
-			{
-				analysis[*iterSL] = new LoopInfoAnalysis(*iterSL);
-				emitLoopInfo(*iterSL);
-			}
+			analysis[L]->bbCount++;
 		}
 
-	};
+		analysis[L]->printAnalysis();
 
-}
+		std::vector<Loop*> subLoops = L->getSubLoops();
+		for (Loop::iterator iterSL=subLoops.begin(), lastSL=subLoops.end(); iterSL != lastSL; ++iterSL)
+		{
+			analysis[*iterSL] = new LoopInfoAnalysis(*iterSL);
+			emitLoopInfo(*iterSL, analysis);
+		}
+	}
 
-/// typeid of pass
-// char LoopInfoAnalysisLegacyPass::ID = 0;
+};
 
-/// Required in order to use with the FPM
-// FunctionPass *createLoopInfoAnalysisLegacyPass() {
-// 	return new LoopInfoAnalysisLegacyPass();
-// }
+AnalysisKey LoopInfoAnalysisPass::Key;
 
 
-#endif /* DEBUG_TYPE */
 #endif /* LOOP_INFO_ANALYSIS_PASS_H */
