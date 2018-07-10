@@ -41,7 +41,6 @@ namespace
 		virtual bool runOnFunction(Function &function) override
 		{
 			calculateAnalysis(function);
-
 			return false; //all analysis passes will return false
 		}
 
@@ -108,7 +107,7 @@ namespace
 /// typeid of pass
 char LoopInfoAnalysisLegacyPass::ID = 0;
 
-/// Required in order to use with the FPM
+/// Required in order to use with the old FPM
 FunctionPass *createLoopInfoAnalysisLegacyPass() {
 	return new LoopInfoAnalysisLegacyPass();
 }
