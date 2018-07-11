@@ -82,9 +82,9 @@ int main(int argc, char* argv[])
 	// 	DebugPM);
 
 
-	// static LoopAnalysisManager *LAM = 
-	// 	new LoopAnalysisManager(DebugAM);
-	// FAM->registerPass([&]{ return LoopAnalysisManagerFunctionProxy(*LAM); });
+	static LoopAnalysisManager *LAM = 
+		new LoopAnalysisManager(DebugAM);
+	FAM->registerPass([&]{ return LoopAnalysisManagerFunctionProxy(*LAM); });
 	// static FunctionAnalysisManager const& FAM_const = *FAM;
 	// FAM->registerPass([&]{ return FunctionAnalysisManagerLoopProxy(*FAM); });
 	// FPM->addPass( RequireAnalysisPass<LoopAnalysisManagerFunctionProxy, Function>() );
