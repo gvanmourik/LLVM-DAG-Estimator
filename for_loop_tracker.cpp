@@ -85,9 +85,10 @@ int main(int argc, char* argv[])
 	static LoopAnalysisManager *LAM = 
 		new LoopAnalysisManager(DebugAM);
 	FAM->registerPass([&]{ return LoopAnalysisManagerFunctionProxy(*LAM); });
-	// static FunctionAnalysisManager const& FAM_const = *FAM;
-	// FAM->registerPass([&]{ return FunctionAnalysisManagerLoopProxy(*FAM); });
-	// FPM->addPass( RequireAnalysisPass<LoopAnalysisManagerFunctionProxy, Function>() );
+
+	/// ERROR here
+	FAM->registerPass([&]{ return FunctionAnalysisManagerLoopProxy(*FAM); });
+	// FPM->addPass( RequireAnalysisPass<FunctionAnalysisManagerLoopProxy, Function>() ); //does NOT work
 
 	/// Use the below method to register all added transform passes rather than 
 	/// passing in each individual pass as a lambda to register that pass.
