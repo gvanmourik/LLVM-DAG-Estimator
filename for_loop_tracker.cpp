@@ -13,7 +13,6 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/IRBuilder.h>
-// #include <llvm/IR/Verifier.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TargetSelect.h>
@@ -58,18 +57,14 @@ int main(int argc, char* argv[])
 	InitializeNativeTargetAsmPrinter();
 
 	// Function analysis and pass managers
-	bool DebugPM = true;
-	bool DebugAM = true;
+	bool DebugPM = false;
+	bool DebugAM = false;
 	static FunctionPassManager *FPM = 
 		new FunctionPassManager(DebugPM);
 	static FunctionAnalysisManager *FAM = 
 		new FunctionAnalysisManager(DebugAM);
-
-	// ModulePassManager *MPM = 
-	// 	new ModulePassManager(DebugPM);
-	// ModuleAnalysisManager *MAM = 
-	// 	new ModuleAnalysisManager(DebugAM);
-
+	static LoopAnalysisManager *LAM = 
+		new LoopAnalysisManager(DebugAM);
 
 	PassBuilder passBuilder;
 	*FPM = passBuilder.buildFunctionSimplificationPipeline(
@@ -77,42 +72,32 @@ int main(int argc, char* argv[])
 		PassBuilder::ThinLTOPhase::None, 
 		DebugPM);
 
-	// *MPM = passBuilder.buildModuleOptimizationPipeline(
-	// 	PassBuilder::OptimizationLevel::O2,
-	// 	DebugPM);
-
-
-	static LoopAnalysisManager *LAM = 
-		new LoopAnalysisManager(DebugAM);
+	/// Manually register proxies
 	FAM->registerPass([&]{ return LoopAnalysisManagerFunctionProxy(*LAM); });
-
-	/// ERROR here
-	FAM->registerPass([&]{ return FunctionAnalysisManagerLoopProxy(*FAM); });
-	// FPM->addPass( RequireAnalysisPass<FunctionAnalysisManagerLoopProxy, Function>() ); //does NOT work
+	LAM->registerPass([&]{ return FunctionAnalysisManagerLoopProxy(*FAM); });
 
 	/// Use the below method to register all added transform passes rather than 
 	/// passing in each individual pass as a lambda to register that pass.
 	/// [ example: FAM->registerPass([&]{ return SROA(); }); ]
 	passBuilder.registerFunctionAnalyses(*FAM);
-	// passBuilder.registerModuleAnalyses(*MAM);
+	passBuilder.registerLoopAnalyses(*LAM);
 
 	/// Returned IR function
 	Function *ForLoopFnc = GenForLoop( context, builder, module, N );
 	
+
+	/// Custom analysis pass
+	FAM->registerPass([&]{ return LoopInfoAnalysisPass(); });
+
+	/// Collect and print result
+	auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
+	print(result); //prints in reverse order
+
+
 	/// Transform passes	
 	outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //print before
 	FPM->run(*ForLoopFnc, *FAM);
 	outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //print after
-
-
-	// /// Custom analysis pass
-	// FPM->addPass( RequireAnalysisPass<LoopInfoAnalysisPass, Function>() );
-	// passBuilder.registerFunctionAnalyses(*FAM);
-	// // FAM->registerPass([&]{ return LoopInfoAnalysisPass(); });
-
-	// /// Collect and print result
-	// auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
-	// print(result); //prints in reverse order
 
 	/// Create a JIT
 	std::string collectedErrors;
@@ -134,6 +119,8 @@ int main(int argc, char* argv[])
 	GenericValue value = engine->runFunction(ForLoopFnc, Args);
 
 	outs() << "Return value = " << value.IntVal << "\n";
+	outs() << "--->SEE ABOVE for LoopInfoAnalysisPass Results<---\n";
+
 
 
 	return 0;
