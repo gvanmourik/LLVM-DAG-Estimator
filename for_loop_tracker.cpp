@@ -2,6 +2,9 @@
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/MCJIT.h>
+#include <llvm/CodeGen/SelectionDAG.h>
+#include <llvm/CodeGen/TargetSubtargetInfo.h>
+#include <llvm/CodeGen/MachineModuleInfo.h>
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
@@ -17,9 +20,12 @@
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/TargetRegistry.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/CFGPrinter.h>
 #include <llvm/Analysis/InstructionSimplify.h>
+#include <llvm/Analysis/OptimizationRemarkEmitter.h>
+#include <llvm/Target/TargetMachine.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Scalar/SROA.h>
 #include <llvm/Transforms/Utils/SimplifyInstructions.h>
@@ -41,6 +47,9 @@ using namespace llvm;
 
 /// Function declarations
 Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
+static TargetMachine *buildTargetMachine();
+PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString);
+ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module);
 void print(Analysis_t &analysis);
 #ifdef GEN_CFG
 void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug);
@@ -55,24 +64,12 @@ int main(int argc, char* argv[])
 		perror("Missing the optimization level argument [O1, O2, O3, Os, Oz]");
 		return -1;
 	}
-	std::string optLevel_string = argv[1];
-	PassBuilder::OptimizationLevel optLevel;
-	if (optLevel_string == "O1")
-		optLevel = PassBuilder::O1;
-	else if (optLevel_string == "O2")
-		optLevel = PassBuilder::O2;
-	else if (optLevel_string == "O3")
-		optLevel = PassBuilder::O3;
-	else if (optLevel_string == "Os")
-		optLevel = PassBuilder::Os;
-	else if (optLevel_string == "Oz")
-		optLevel = PassBuilder::Oz;
-	else
-		optLevel = PassBuilder::O1;
-
+	std::string optLevelString = argv[1];
+	PassBuilder::OptimizationLevel optLevel = setOptLevel(optLevelString);
 	int N;
 	std::cout << "Enter the number of loop iterations: ";
 	std::cin >> N;
+
 
 	/// LLVM IR Variables
 	static LLVMContext context;
@@ -83,15 +80,28 @@ int main(int argc, char* argv[])
 	InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
 
-
 	/// Returned IR function
-	Function *ForLoopFnc = generateForLoop( context, builder, module, N );
+	static Function *ForLoopFnc = generateForLoop( context, builder, module, N );
+
+
+	/// DAG emission dev
+	static auto targetMachine = buildTargetMachine();
+	mainModule->setDataLayout(targetMachine->createDataLayout());
+	mainModule->setTargetTriple( targetMachine->getTargetTriple().getTriple() );
+	SelectionDAG *SDAG = new SelectionDAG(*targetMachine, CodeGenOpt::Level::None);
+	// SDAG->viewGraph(); //causes seg fault
+	auto *machineMI = new MachineModuleInfo(targetMachine);
+	auto &machineForLoopFnc = machineMI->getOrCreateMachineFunction(*ForLoopFnc);
+	auto *ORE = new OptimizationRemarkEmitter(ForLoopFnc);
+	auto myPass = new LoopInfoAnalysisPass();
+	// SDAG->init(machineForLoopFnc, *ORE, myPass);
+	// MachineFunction *ForLoopMFnc = new MachineFunction(*ForLoopFnc, targetMachine, SDAG->getSubtarget());
+
 
 	/// CFG Before
 	#ifdef GEN_CFG
 		generateCFG(ForLoopFnc, "ForLoopFncBefore", passBuilder, false);
 	#endif
-
 
 	/// Function analysis and pass managers
 	bool DebugPM = false;
@@ -129,34 +139,18 @@ int main(int argc, char* argv[])
 	outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //print before
 	FPM->run(*ForLoopFnc, *FAM);
 	outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //print after
-
 	/// CFG After
 	#ifdef GEN_CFG
 		generateCFG(ForLoopFnc, "ForLoopFncAfter", passBuilder, false);
 	#endif
 
 
-	/// Create a JIT
-	std::string collectedErrors;
-	ExecutionEngine *engine = 
-		EngineBuilder(std::move(mainModule))
-		.setErrorStr(&collectedErrors)
-		.setEngineKind(EngineKind::JIT)
-		.create();
-
-	/// Execution Engine
-	if ( !engine )
-	{
-		std::string error = "Unable to construct execution engine: " + collectedErrors;
-		perror(error.c_str());
-		return -1;
-	}
-
+	auto engine = buildExecutionEngine(mainModule);
 	std::vector<GenericValue> Args(0); // Empty vector as no args are passed
 	GenericValue value = engine->runFunction(ForLoopFnc, Args);
 
 	outs() << "Return value = " << value.IntVal << "\n";
-	outs() << "Opt Level: " << optLevel_string << "\n";
+	outs() << "Opt Level: " << optLevelString << "\n";
 	outs() << "--->SEE ABOVE for LoopInfoAnalysisPass Results<---\n";
 
 
@@ -249,6 +243,64 @@ Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* mo
 
 
 	return ForLoopFnc;
+}
+
+static TargetMachine *buildTargetMachine()
+{
+	std::string error;
+	auto targetTriple = sys::getDefaultTargetTriple();
+	auto target = TargetRegistry::lookupTarget(targetTriple, error);
+	auto cpu = "generic";
+	auto features = "";
+	auto RM = Optional<Reloc::Model>();
+	TargetOptions options;
+	if (!target)
+	{
+		errs() << error;
+		return nullptr;
+	}
+
+	return target->createTargetMachine(targetTriple, cpu, features, options, RM);
+}
+
+PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString)
+{
+	if (optLevelString == "O1")
+		return PassBuilder::O1;
+	else if (optLevelString == "O2")
+		return PassBuilder::O2;
+	else if (optLevelString == "O3")
+		return PassBuilder::O3;
+	else if (optLevelString == "Os")
+		return PassBuilder::Os;
+	else if (optLevelString == "Oz")
+		return PassBuilder::Oz;
+	else
+	{
+		errs() << "Error: Not a prescribed optimization level. Setting to the default O1 level.\n";
+		optLevelString = "O1";
+		return PassBuilder::O1;
+	}
+}
+
+ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module)
+{
+	/// Create a JIT
+	std::string collectedErrors;
+	ExecutionEngine *engine = 
+		EngineBuilder(std::move(module))
+		.setErrorStr(&collectedErrors)
+		.setEngineKind(EngineKind::JIT)
+		.create();
+
+	/// Execution Engine
+	if ( !engine )
+	{
+		std::string error = "Unable to construct execution engine: " + collectedErrors;
+		perror(error.c_str());
+		return nullptr;
+	}
+	return engine;
 }
 
 void print(Analysis_t &analysis)
