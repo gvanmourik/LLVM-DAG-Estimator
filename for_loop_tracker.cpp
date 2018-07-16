@@ -36,7 +36,6 @@
 
 using namespace llvm;
 
-
 /// Function declarations
 Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
 void print(Analysis_t &analysis);
@@ -53,8 +52,14 @@ int main(int argc, char* argv[])
 	static IRBuilder<> builder(context);
 	std::unique_ptr<Module> mainModule( new Module("ForLoopFncModule", context) );
 	Module *module = mainModule.get();
+	PassBuilder passBuilder;
 	InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
+
+
+	/// Returned IR function
+	Function *ForLoopFnc = GenForLoop( context, builder, module, N );
+
 
 	// Function analysis and pass managers
 	bool DebugPM = false;
@@ -66,13 +71,12 @@ int main(int argc, char* argv[])
 	static LoopAnalysisManager *LAM = 
 		new LoopAnalysisManager(DebugAM);
 
-	PassBuilder passBuilder;
 	*FPM = passBuilder.buildFunctionSimplificationPipeline(
 		PassBuilder::OptimizationLevel::O2, 
 		PassBuilder::ThinLTOPhase::None, 
 		DebugPM);
 
-	/// Manually register proxies
+	/// Manually register proxies used in the pipeline
 	FAM->registerPass([&]{ return LoopAnalysisManagerFunctionProxy(*LAM); });
 	LAM->registerPass([&]{ return FunctionAnalysisManagerLoopProxy(*FAM); });
 
@@ -82,13 +86,9 @@ int main(int argc, char* argv[])
 	passBuilder.registerFunctionAnalyses(*FAM);
 	passBuilder.registerLoopAnalyses(*LAM);
 
-	/// Returned IR function
-	Function *ForLoopFnc = GenForLoop( context, builder, module, N );
 	
-
 	/// Custom analysis pass
 	FAM->registerPass([&]{ return LoopInfoAnalysisPass(); });
-
 	/// Collect and print result
 	auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
 	print(result); //prints in reverse order
@@ -140,26 +140,23 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 	/// BBs Outline
 	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", ForLoopFnc);
 	BasicBlock *ForLoop1EntryBB = BasicBlock::Create(context, "forLoop1Entry", ForLoopFnc);
-	BasicBlock *ForLoop1BodyBB = BasicBlock::Create(context, "forLoop1Body", ForLoopFnc);
-		BasicBlock *ForLoop2EntryBB = BasicBlock::Create(context, "forLoop2Entry", ForLoopFnc);
-		BasicBlock *ForLoop2BodyBB = BasicBlock::Create(context, "forLoop2Body", ForLoopFnc);
-			BasicBlock *IfEntryBB = BasicBlock::Create(context, "ifEntry", ForLoopFnc);
-			BasicBlock *ThenBB = BasicBlock::Create(context, "then", ForLoopFnc);
-			BasicBlock *ElseBB = BasicBlock::Create(context, "else", ForLoopFnc);
-		BasicBlock *ForLoop2ExitBB = BasicBlock::Create(context, "forLoop2Exit", ForLoopFnc);
+		BasicBlock *IfEntryBB = BasicBlock::Create(context, "ifEntry", ForLoopFnc);
+		BasicBlock *ThenBB = BasicBlock::Create(context, "then", ForLoopFnc);
+		BasicBlock *ElseBB = BasicBlock::Create(context, "else", ForLoopFnc);
+		BasicBlock *MergeBB = BasicBlock::Create(context, "merge", ForLoopFnc);
 	BasicBlock *ForLoop1ExitBB = BasicBlock::Create(context, "forLoop1Exit", ForLoopFnc);
 	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", ForLoopFnc);
 	
 	/// Variables
-	Value *ifiLTN, *ifjLTN, *ifEqual, *i, *j, *iVal, *jVal, 
-		  *counter, *counterVal, *cmpVal, *returnValue;
+	Value *ifiLTN, *ifEqual, *i, *j, *iVal, *counter, 
+		  *counterAVal, *cmpVal, *returnValue;
 
 
 	/// EntryBB
 	builder.SetInsertPoint(EntryBB);
 	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
 	j = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "j");
-	counter = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "counter");
+	counter = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "counter");	
 	builder.CreateStore(zero, i);
 	builder.CreateStore(zero, j);
 	builder.CreateStore(zero, counter);
@@ -169,48 +166,38 @@ Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module,
 	builder.SetInsertPoint(ForLoop1EntryBB);
 	iVal = builder.CreateLoad(i, "iVal");
 	ifiLTN = builder.CreateICmpULT(iVal, N, "ifiLTN");
-	builder.CreateCondBr(ifiLTN, ForLoop1BodyBB, ForLoop1ExitBB);
-	
-	/// ForLoop1BodyBB
-	builder.SetInsertPoint(ForLoop1BodyBB);
-	iVal = builder.CreateAdd(iVal, one);
-	builder.CreateStore(iVal, i);
-	builder.CreateBr(ForLoop2EntryBB);
+	builder.CreateCondBr(ifiLTN, IfEntryBB, ForLoop1ExitBB);
 
-		/// ForLoop2EntryBB
-		builder.SetInsertPoint(ForLoop2EntryBB);
-		jVal = builder.CreateLoad(j, "jVal");
-		ifjLTN = builder.CreateICmpULT(jVal, N, "ifjLTN");
-		builder.CreateCondBr(ifjLTN, ForLoop2BodyBB, ForLoop2ExitBB);
+		/// IfEntryBB
+		builder.SetInsertPoint(IfEntryBB);
+		iVal = builder.CreateLoad(i, "iVal");
+		cmpVal = builder.CreateAdd(builder.CreateMul(iVal, two), one);
+		cmpVal = builder.CreateURem(cmpVal, three, "modVal");
+		ifEqual = builder.CreateICmpEQ(cmpVal, zero, "ifEqual");
+		builder.CreateCondBr(ifEqual, ThenBB, ElseBB);
 
-		/// ForLoop2BodyBB
-		builder.SetInsertPoint(ForLoop2BodyBB);
-		jVal = builder.CreateAdd(jVal, one);
-		builder.CreateStore(jVal, j);
-		builder.CreateBr(IfEntryBB);
+		/// ThenBB (increment counter)
+		builder.SetInsertPoint(ThenBB);
+		counterAVal = builder.CreateLoad(counter, "counterAVal");
+		counterAVal = builder.CreateAdd(counterAVal, one);
+		builder.CreateStore(counterAVal, counter);
+		builder.CreateBr(MergeBB);
 
-			/// IfEntryBB
-			builder.SetInsertPoint(IfEntryBB);
-			counterVal = builder.CreateLoad(counter, "counterVal");
-			cmpVal = builder.CreateAdd(builder.CreateMul(counterVal, two), one);
-			cmpVal = builder.CreateURem(cmpVal, three, "cmpVal");
-			ifEqual = builder.CreateICmpEQ(cmpVal, zero, "ifEqual");
-			builder.CreateCondBr(ifEqual, ThenBB, ElseBB);
-
-			/// ThenBB
-			builder.SetInsertPoint(ThenBB);
-			counterVal = builder.CreateAdd(counterVal, one);
-			builder.CreateStore(counterVal, counter);
-			builder.CreateBr(ForLoop2EntryBB);
-
-			/// ElseBB
-			builder.SetInsertPoint(ElseBB);
-			builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "dummyAlloca");
-			builder.CreateBr(ForLoop2EntryBB);
-
-		/// ForLoop2ExitBB
-		builder.SetInsertPoint(ForLoop2ExitBB);
+		/// ElseBB (do nothing)
+		builder.SetInsertPoint(ElseBB);
+		///
+		/// IF another option is required for the counter complete here:
+		// counterBVal = builder.CreateLoad(counter, "counterBVal");
+		// counterBVal = builder.CreateAdd(counterBVal, one);
+		// builder.CreateStore(counterBVal, counter);
+		///
 		builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "dummyAlloca");
+		builder.CreateBr(MergeBB);
+
+		/// MergeBB
+		builder.SetInsertPoint(MergeBB);
+		iVal = builder.CreateAdd(iVal, one, "i++");
+		builder.CreateStore(iVal, i);
 		builder.CreateBr(ForLoop1EntryBB);
 	
 	/// ForLoop1ExitBB
@@ -238,5 +225,3 @@ void print(Analysis_t &analysis)
 	outs() << "----------------------------------------\n";
 
 }
-
-
