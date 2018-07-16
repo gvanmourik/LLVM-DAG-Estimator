@@ -35,17 +35,41 @@
 #include "LoopInfoAnalysisPass.h"
 
 /// Comment/uncomment to disable/enable CFG generation
-#define GEN_CFG
+// #define GEN_CFG
 
 using namespace llvm;
 
 /// Function declarations
-Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
+Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
 void print(Analysis_t &analysis);
+#ifdef GEN_CFG
+void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug);
+#endif
 
 
 int main(int argc, char* argv[])
 {
+	/// User inputs
+	if ( argv[1] == nullptr )
+	{
+		perror("Missing the optimization level argument [O1, O2, O3, Os, Oz]");
+		return -1;
+	}
+	std::string optLevel_string = argv[1];
+	PassBuilder::OptimizationLevel optLevel;
+	if (optLevel_string == "O1")
+		optLevel = PassBuilder::O1;
+	else if (optLevel_string == "O2")
+		optLevel = PassBuilder::O2;
+	else if (optLevel_string == "O3")
+		optLevel = PassBuilder::O3;
+	else if (optLevel_string == "Os")
+		optLevel = PassBuilder::Os;
+	else if (optLevel_string == "Oz")
+		optLevel = PassBuilder::Oz;
+	else
+		optLevel = PassBuilder::O1;
+
 	int N;
 	std::cout << "Enter the number of loop iterations: ";
 	std::cin >> N;
@@ -61,21 +85,15 @@ int main(int argc, char* argv[])
 
 
 	/// Returned IR function
-	Function *ForLoopFnc = GenForLoop( context, builder, module, N );
+	Function *ForLoopFnc = generateForLoop( context, builder, module, N );
 
-	/// CFG generation
+	/// CFG Before
 	#ifdef GEN_CFG
-		static FunctionPassManager *FPM_CFG = 
-			new FunctionPassManager(false);
-		static FunctionAnalysisManager *FAM_CFG = 
-			new FunctionAnalysisManager(false);
-
-		FPM_CFG->addPass( CFGPrinterPass() );
-		passBuilder.registerFunctionAnalyses(*FAM_CFG);
-		FPM_CFG->run(*ForLoopFnc, *FAM_CFG);
+		generateCFG(ForLoopFnc, "ForLoopFncBefore", passBuilder, false);
 	#endif
 
-	// Function analysis and pass managers
+
+	/// Function analysis and pass managers
 	bool DebugPM = false;
 	bool DebugAM = false;
 	static FunctionPassManager *FPM = 
@@ -86,14 +104,13 @@ int main(int argc, char* argv[])
 		new LoopAnalysisManager(DebugAM);
 
 	*FPM = passBuilder.buildFunctionSimplificationPipeline(
-		PassBuilder::OptimizationLevel::O2, 
+		optLevel, 
 		PassBuilder::ThinLTOPhase::None, 
 		DebugPM);
 
-	/// Manually register proxies used in the pipeline
+	/// Manually register the proxies used in the pipeline
 	FAM->registerPass([&]{ return LoopAnalysisManagerFunctionProxy(*LAM); });
 	LAM->registerPass([&]{ return FunctionAnalysisManagerLoopProxy(*FAM); });
-
 	/// Use the below method to register all added transform passes rather than 
 	/// passing in each individual pass as a lambda to register that pass.
 	/// [ example: FAM->registerPass([&]{ return SROA(); }); ]
@@ -112,6 +129,12 @@ int main(int argc, char* argv[])
 	outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //print before
 	FPM->run(*ForLoopFnc, *FAM);
 	outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //print after
+
+	/// CFG After
+	#ifdef GEN_CFG
+		generateCFG(ForLoopFnc, "ForLoopFncAfter", passBuilder, false);
+	#endif
+
 
 	/// Create a JIT
 	std::string collectedErrors;
@@ -133,14 +156,14 @@ int main(int argc, char* argv[])
 	GenericValue value = engine->runFunction(ForLoopFnc, Args);
 
 	outs() << "Return value = " << value.IntVal << "\n";
+	outs() << "Opt Level: " << optLevel_string << "\n";
 	outs() << "--->SEE ABOVE for LoopInfoAnalysisPass Results<---\n";
-
 
 
 	return 0;
 }
 
-Function* GenForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters)
+Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters)
 {
 	Function *ForLoopFnc = 
 		cast<Function>( module->getOrInsertFunction("ForLoopFnc", Type::getInt32Ty(context)) );
@@ -239,3 +262,20 @@ void print(Analysis_t &analysis)
 	outs() << "----------------------------------------\n";
 
 }
+
+#ifdef GEN_CFG
+void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug)
+{
+	targetFnc->setName(cfg_title);
+
+	static FunctionPassManager *FPM_CFG = 
+		new FunctionPassManager(debug);
+	static FunctionAnalysisManager *FAM_CFG = 
+		new FunctionAnalysisManager(debug);
+
+	FPM_CFG->addPass( CFGPrinterPass() );
+	passBuilder.registerFunctionAnalyses(*FAM_CFG);
+	FPM_CFG->run(*targetFnc, *FAM_CFG);
+}
+#endif
+
