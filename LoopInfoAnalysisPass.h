@@ -19,9 +19,6 @@ class LoopInfoAnalysisPass : public AnalysisInfoMixin<LoopInfoAnalysisPass>
 	friend AnalysisInfoMixin<LoopInfoAnalysisPass>;
 	static AnalysisKey Key;
 
-// private:
-// 	Analysis_t analysis;
-
 public:
 	using Result = Analysis_t;
 
