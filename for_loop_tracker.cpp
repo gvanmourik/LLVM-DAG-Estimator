@@ -34,6 +34,9 @@
 /// Custom analysis passes
 #include "LoopInfoAnalysisPass.h"
 
+/// Comment/uncomment to disable/enable CFG generation
+#define GEN_CFG
+
 using namespace llvm;
 
 /// Function declarations
@@ -60,6 +63,17 @@ int main(int argc, char* argv[])
 	/// Returned IR function
 	Function *ForLoopFnc = GenForLoop( context, builder, module, N );
 
+	/// CFG generation
+	#ifdef GEN_CFG
+		static FunctionPassManager *FPM_CFG = 
+			new FunctionPassManager(false);
+		static FunctionAnalysisManager *FAM_CFG = 
+			new FunctionAnalysisManager(false);
+
+		FPM_CFG->addPass( CFGPrinterPass() );
+		passBuilder.registerFunctionAnalyses(*FAM_CFG);
+		FPM_CFG->run(*ForLoopFnc, *FAM_CFG);
+	#endif
 
 	// Function analysis and pass managers
 	bool DebugPM = false;
