@@ -4,6 +4,7 @@ import os
 import sys
 import subprocess
 
+
 ## Process inputs
 iterations = sys.argv[1]
 optLevel = sys.argv[2]
