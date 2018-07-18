@@ -47,10 +47,6 @@ Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* mo
 PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString);
 ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module);
 void print(Analysis_t &analysis);
-#ifdef GEN_DAG
-	void generateDAG(Function *targetFnc, std::unique_ptr<Module> &module);
-	static TargetMachine *buildTargetMachine();
-#endif
 #ifdef GEN_CFG
 	void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug);
 #endif
@@ -83,14 +79,12 @@ int main(int argc, char* argv[])
 	InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
 
+	static auto targetMachine = buildTargetMachine();
+	module->setDataLayout(targetMachine->createDataLayout());
+	module->setTargetTriple( targetMachine->getTargetTriple().getTriple() );
+
 	/// Returned IR function
 	static Function *ForLoopFnc = generateForLoop( context, builder, module, N );
-
-
-	/// DAG emission
-	#ifdef GEN_DAG
-		generateDAG(ForLoopFnc, mainModule);
-	#endif
 
 	/// CFG Before
 	#ifdef GEN_CFG
@@ -173,17 +167,15 @@ Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* mo
 	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", ForLoopFnc);
 	
 	/// Variables
-	Value *ifiLTN, *ifEqual, *i, *j, *iVal, *counter, 
+	Value *ifiLTN, *ifEqual, *i, *iVal, *counter, 
 		  *counterAVal, *cmpVal, *returnValue;
 
 
 	/// EntryBB
 	builder.SetInsertPoint(EntryBB);
 	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
-	j = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "j");
 	counter = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "counter");	
 	builder.CreateStore(zero, i);
-	builder.CreateStore(zero, j);
 	builder.CreateStore(zero, counter);
 	builder.CreateBr(ForLoop1EntryBB);
 
@@ -289,41 +281,6 @@ void print(Analysis_t &analysis)
 	outs() << "----------------------------------------\n";
 
 }
-
-#ifdef GEN_DAG
-void generateDAG(Function *targetFnc, std::unique_ptr<Module> &module)
-{
-	static auto targetMachine = buildTargetMachine();
-	module->setDataLayout(targetMachine->createDataLayout());
-	module->setTargetTriple( targetMachine->getTargetTriple().getTriple() );
-	
-	SelectionDAG *SDAG = new SelectionDAG(*targetMachine, CodeGenOpt::Level::None);
-	auto *machineMI = new MachineModuleInfo(targetMachine);
-	auto &machineForLoopFnc = machineMI->getOrCreateMachineFunction(*targetFnc);
-	auto *ORE = new OptimizationRemarkEmitter(targetFnc);
-	auto customPass = new LoopInfoAnalysisWrapperPass();
-	SDAG->init(machineForLoopFnc, *ORE, customPass);
-	SDAG->viewGraph();
-}
-
-static TargetMachine *buildTargetMachine()
-{
-	std::string error;
-	auto targetTriple = sys::getDefaultTargetTriple();
-	auto target = TargetRegistry::lookupTarget(targetTriple, error);
-	auto cpu = "generic";
-	auto features = "";
-	auto RM = Optional<Reloc::Model>();
-	TargetOptions options;
-	if (!target)
-	{
-		errs() << error;
-		return nullptr;
-	}
-
-	return target->createTargetMachine(targetTriple, cpu, features, options, RM);
-}
-#endif /* GEN_DAG */
 
 #ifdef GEN_CFG
 void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug)
