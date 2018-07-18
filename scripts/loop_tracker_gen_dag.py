@@ -23,7 +23,6 @@ filePath = err[startPath:endPath]
 splitIndex = filePath.find("dag.")
 fileDir = filePath[:splitIndex]
 fileName = filePath[splitIndex:]
-fileNamePng = fileName + ".png"
 
 ## Produce DAG
 imgDirPath = "images/"
@@ -41,5 +40,8 @@ genDag = subprocess.Popen("dot -T png -O " + imgDirPath + fileName, shell=True)
 genDag.wait()
 
 print "Opening newly created DAG file..."
+newFileName = fileName[:fileName.find("-")] #remove identifier
+fileNamePng = newFileName + ".png"
+renameFile = os.rename(imgDirPath + fileName + ".png", imgDirPath + fileNamePng)
 openDag = subprocess.Popen("open " + imgDirPath + fileNamePng, shell=True)
 removeDotFile = subprocess.Popen("rm " + imgDirPath + "*.dot", shell=True)
