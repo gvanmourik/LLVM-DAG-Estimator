@@ -40,9 +40,6 @@
 /// Custom analysis passes
 #include "LoopInfoAnalysisPass.h"
 
-/// Comment/uncomment to disable/enable CFG generation
-// #define GEN_CFG
-
 using namespace llvm;
 
 /// Function declarations
@@ -51,6 +48,10 @@ static TargetMachine *buildTargetMachine();
 PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString);
 ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module);
 void print(Analysis_t &analysis);
+
+#ifdef GEN_DAG
+void generateDAG(Function *targetFnc, std::unique_ptr<Module> &module);
+#endif
 #ifdef GEN_CFG
 void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug);
 #endif
@@ -61,14 +62,17 @@ int main(int argc, char* argv[])
 	/// User inputs
 	if ( argv[1] == nullptr )
 	{
+		perror("Missing the loop iterations argument [integer value]");
+		return -1;
+	}
+	int N = atoi(argv[1]);
+	if ( argv[2] == nullptr )
+	{
 		perror("Missing the optimization level argument [O1, O2, O3, Os, Oz]");
 		return -1;
 	}
-	std::string optLevelString = argv[1];
+	std::string optLevelString = argv[2];
 	PassBuilder::OptimizationLevel optLevel = setOptLevel(optLevelString);
-	int N;
-	std::cout << "Enter the number of loop iterations: ";
-	std::cin >> N;
 
 
 	/// LLVM IR Variables
@@ -84,19 +88,10 @@ int main(int argc, char* argv[])
 	static Function *ForLoopFnc = generateForLoop( context, builder, module, N );
 
 
-	/// DAG emission dev
-	static auto targetMachine = buildTargetMachine();
-	mainModule->setDataLayout(targetMachine->createDataLayout());
-	mainModule->setTargetTriple( targetMachine->getTargetTriple().getTriple() );
-	SelectionDAG *SDAG = new SelectionDAG(*targetMachine, CodeGenOpt::Level::None);
-	// SDAG->viewGraph(); //causes seg fault
-	auto *machineMI = new MachineModuleInfo(targetMachine);
-	auto &machineForLoopFnc = machineMI->getOrCreateMachineFunction(*ForLoopFnc);
-	auto *ORE = new OptimizationRemarkEmitter(ForLoopFnc);
-	auto myPass = new LoopInfoAnalysisPass();
-	// SDAG->init(machineForLoopFnc, *ORE, myPass);
-	// MachineFunction *ForLoopMFnc = new MachineFunction(*ForLoopFnc, targetMachine, SDAG->getSubtarget());
-
+	/// DAG emission
+	#ifdef GEN_DAG
+		generateDAG(ForLoopFnc, mainModule);
+	#endif
 
 	/// CFG Before
 	#ifdef GEN_CFG
@@ -285,15 +280,13 @@ PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString)
 
 ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module)
 {
-	/// Create a JIT
 	std::string collectedErrors;
 	ExecutionEngine *engine = 
 		EngineBuilder(std::move(module))
 		.setErrorStr(&collectedErrors)
 		.setEngineKind(EngineKind::JIT)
 		.create();
-
-	/// Execution Engine
+		
 	if ( !engine )
 	{
 		std::string error = "Unable to construct execution engine: " + collectedErrors;
@@ -314,6 +307,23 @@ void print(Analysis_t &analysis)
 	outs() << "----------------------------------------\n";
 
 }
+
+#ifdef GEN_DAG
+void generateDAG(Function *targetFnc, std::unique_ptr<Module> &module)
+{
+	static auto targetMachine = buildTargetMachine();
+	module->setDataLayout(targetMachine->createDataLayout());
+	module->setTargetTriple( targetMachine->getTargetTriple().getTriple() );
+	
+	SelectionDAG *SDAG = new SelectionDAG(*targetMachine, CodeGenOpt::Level::None);
+	auto *machineMI = new MachineModuleInfo(targetMachine);
+	auto &machineForLoopFnc = machineMI->getOrCreateMachineFunction(*targetFnc);
+	auto *ORE = new OptimizationRemarkEmitter(targetFnc);
+	auto customPass = new LoopInfoAnalysisWrapperPass();
+	SDAG->init(machineForLoopFnc, *ORE, customPass);
+	SDAG->viewGraph();
+}
+#endif
 
 #ifdef GEN_CFG
 void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug)
