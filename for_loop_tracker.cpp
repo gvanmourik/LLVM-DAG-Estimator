@@ -47,6 +47,7 @@ Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* mo
 PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString);
 ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module);
 void print(Analysis_t &analysis);
+static TargetMachine *buildTargetMachine();
 #ifdef GEN_CFG
 	void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug);
 #endif
@@ -280,6 +281,24 @@ void print(Analysis_t &analysis)
 	}
 	outs() << "----------------------------------------\n";
 
+}
+
+static TargetMachine *buildTargetMachine()
+{
+	std::string error;
+	auto targetTriple = sys::getDefaultTargetTriple();
+	auto target = TargetRegistry::lookupTarget(targetTriple, error);
+	auto cpu = "generic";
+	auto features = "";
+	auto RM = Optional<Reloc::Model>();
+	TargetOptions options;
+	if (!target)
+	{
+		errs() << error;
+		return nullptr;
+	}
+
+	return target->createTargetMachine(targetTriple, cpu, features, options, RM);
 }
 
 #ifdef GEN_CFG
