@@ -18,11 +18,7 @@ ifeq ($(cfg), true)
 	CFLAGS += -DGEN_CFG
 endif
 
-ifeq ($(dag), true)
-	CFLAGS += -DGEN_DAG
-endif
-
-TARGET = $(PROGRAM_NAME)
+TARGET = .$(PROGRAM_NAME)
 SOURCE = $(PROGRAM_NAME).cpp
 OBJECT = $(SOURCE:.cpp=.o)
 
