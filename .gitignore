@@ -9,7 +9,7 @@ run_loop_tracker
 cfg_convert_and_move
 
 ## Directories
-cfgImages/
+images/
 
 ## Other
 .DS_Store
