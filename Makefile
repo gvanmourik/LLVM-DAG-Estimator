@@ -1,6 +1,5 @@
 CLANG_HOME = /Users/gvanmou/Programs/source/llvm-clang-6.0.0/build/
 PROGRAM_NAME = for_loop_tracker
-EXE_NAME = run_loop_tracker
 
 CC := clang++
 
@@ -15,7 +14,15 @@ CFLAGS := -fno-rtti \
 LDFLAGS := -std=c++11
 LIBS :=
 
-TARGET = $(EXE_NAME)
+ifeq ($(cfg), true)
+	CFLAGS += -DGEN_CFG
+endif
+
+ifeq ($(dag), true)
+	CFLAGS += -DGEN_DAG
+endif
+
+TARGET = $(PROGRAM_NAME)
 SOURCE = $(PROGRAM_NAME).cpp
 OBJECT = $(SOURCE:.cpp=.o)
 
