@@ -80,6 +80,7 @@ int main(int argc, char* argv[])
 	InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
 
+	/// Specify target features
 	static auto targetMachine = buildTargetMachine();
 	module->setDataLayout(targetMachine->createDataLayout());
 	module->setTargetTriple( targetMachine->getTargetTriple().getTriple() );
