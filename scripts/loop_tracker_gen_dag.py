@@ -34,7 +34,9 @@ if imgDirExists is not True:
 
 print "Moving and converting .dot file..."
 copyFile = subprocess.Popen("cp " + filePath + " " + imgDirPath, shell=True)
+# copyFile.wait()
 removeFile = subprocess.Popen("rm " + filePath, shell=True)
+# removeFile.wait()
 genDag = subprocess.Popen("dot -T png -O " + imgDirPath + fileName, shell=True)
 genDag.wait()
 
