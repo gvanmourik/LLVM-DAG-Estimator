@@ -4,31 +4,21 @@ ITERATIONS=$1
 OPT_LEVEL=$2
 
 cfg="false"
-dag="false"
 
 ## Functions
 usage() {
-	echo "Usage: $0 [iterations] [opt level] [-dag | --gen-dag] [-cfg | --gen-cfg]"
+	echo "Usage: $0 [iterations] [opt level] [-cfg | --gen-cfg]"
 	echo -e "\titerations = integer value"
 	echo -e "\t opt level = O1, O2, O3, Os, Oz"
 	exit 1
 }
 do_default() {
 	make
-	./for_loop_tracker $ITERATIONS $OPT_LEVEL
+	./.for_loop_tracker $ITERATIONS $OPT_LEVEL
 }
 do_cfg() {
 	make cfg=true
-	./for_loop_tracker $ITERATIONS $OPT_LEVEL
-	scripts/cfg_convert_and_move
-}
-do_dag() {
-	make dag=true
-	python scripts/loop_tracker_gen_dag.py $ITERATIONS $OPT_LEVEL
-}
-do_cfg_dag() {
-	make dag=true cfg=true 
-	python scripts/loop_tracker_gen_dag.py $ITERATIONS $OPT_LEVEL
+	./.for_loop_tracker $ITERATIONS $OPT_LEVEL
 	scripts/cfg_convert_and_move
 }
 
@@ -46,10 +36,6 @@ fi
 ## With flags
 while [ ! $# -eq 2 ]; do
 	case "$3" in
-		--gen-dag | -dag)
-			dag="true"
-			shift
-			;;
 		--gen-cfg | -cfg)
 			cfg="true"
 			shift
@@ -62,14 +48,7 @@ while [ ! $# -eq 2 ]; do
 done
 
 ## Run based on the flags passed
-if [ "$cfg" == "true" ] && [ "$dag" == "true" ]; then
-	do_cfg_dag
-	exit 1
-fi
 if [ "$cfg" == "true" ]; then
 	do_cfg
-fi
-if [ "$dag" == "true" ]; then
-	do_dag
 fi
 
