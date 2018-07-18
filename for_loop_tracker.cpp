@@ -44,16 +44,15 @@ using namespace llvm;
 
 /// Function declarations
 Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
-static TargetMachine *buildTargetMachine();
 PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString);
 ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module);
 void print(Analysis_t &analysis);
-
 #ifdef GEN_DAG
-void generateDAG(Function *targetFnc, std::unique_ptr<Module> &module);
+	void generateDAG(Function *targetFnc, std::unique_ptr<Module> &module);
+	static TargetMachine *buildTargetMachine();
 #endif
 #ifdef GEN_CFG
-void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug);
+	void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug);
 #endif
 
 
@@ -240,23 +239,6 @@ Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* mo
 	return ForLoopFnc;
 }
 
-static TargetMachine *buildTargetMachine()
-{
-	std::string error;
-	auto targetTriple = sys::getDefaultTargetTriple();
-	auto target = TargetRegistry::lookupTarget(targetTriple, error);
-	auto cpu = "generic";
-	auto features = "";
-	auto RM = Optional<Reloc::Model>();
-	TargetOptions options;
-	if (!target)
-	{
-		errs() << error;
-		return nullptr;
-	}
-
-	return target->createTargetMachine(targetTriple, cpu, features, options, RM);
-}
 
 PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString)
 {
@@ -323,7 +305,25 @@ void generateDAG(Function *targetFnc, std::unique_ptr<Module> &module)
 	SDAG->init(machineForLoopFnc, *ORE, customPass);
 	SDAG->viewGraph();
 }
-#endif
+
+static TargetMachine *buildTargetMachine()
+{
+	std::string error;
+	auto targetTriple = sys::getDefaultTargetTriple();
+	auto target = TargetRegistry::lookupTarget(targetTriple, error);
+	auto cpu = "generic";
+	auto features = "";
+	auto RM = Optional<Reloc::Model>();
+	TargetOptions options;
+	if (!target)
+	{
+		errs() << error;
+		return nullptr;
+	}
+
+	return target->createTargetMachine(targetTriple, cpu, features, options, RM);
+}
+#endif /* GEN_DAG */
 
 #ifdef GEN_CFG
 void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug)
