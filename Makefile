@@ -1,10 +1,10 @@
-CLANG_HOME = /Users/gvanmou/Programs/source/llvm-clang-6.0.0/build/
+CLANG_HOME = /Users/gvanmou/Programs/source/llvm-clang-6.0.0/build
 PROGRAM_NAME = for_loop_tracker
 
 CC := clang++
 
 INCLUDES := -I$(CLANG_HOME)/include \
-			-I./
+			-Iinclude
 CXXFLAGS := -fno-use-cxa-atexit \
 			-fno-rtti \
 			`llvm-config --cxxflags --ldflags --system-libs --libs all core mcjit native` \
