@@ -11,19 +11,22 @@ class DAGNode {
 
 private:
 	llvm::Instruction *Inst;
+	std::string Name;
 	llvm::Value *Val;
 	unsigned opcode;
 	int ID;
+	bool valueOnlyNode;
 	DAGNode *left;
 	DAGNode *right;
 	DAGNodeList adjNodes;
 
 public:
-	DAGNode() : opcode(0), ID(-1) {}
+	DAGNode() : opcode(0), ID(-1), valueOnlyNode(false) {}
 	DAGNode(llvm::Instruction *inst, int id) : Inst(inst)
 	{
 		opcode = inst->getOpcode();
 		ID = id;
+		valueOnlyNode = false;
 		Val = nullptr;
 		left = nullptr;
 		right = nullptr;
@@ -32,6 +35,7 @@ public:
 	{
 		opcode = 0; //invalid opcode indicating value-only node
 		ID = id;
+		valueOnlyNode = true;
 		Val = value;
 		left = nullptr;
 		right = nullptr;
@@ -49,15 +53,19 @@ public:
 		else
 			return "<no inst>"; 
 	}
+
 	int getID() { return ID; }
 	Value* getValue() { return Val; }
 	DAGNode* getAdjNode(int ID) { return adjNodes[ID]; }
 	DAGNodeList getAdjNodes() { return adjNodes; }
 	llvm::Instruction* getInst() { return Inst; }
+	std::string getName() { return Name; }
 
 	void setLeft(DAGNode *assignedNode) { left = assignedNode; }
 	void setRight(DAGNode *assignedNode) { right = assignedNode; }
+	void setValue(llvm::Value *val) { Val = val; }
 	void addAdjNode(DAGNode *node) { adjNodes[node->getID()] = node; }
+	void setName(std::string name) { Name = name; }
 
 	bool leftIsEmpty()
 	{
@@ -67,26 +75,20 @@ public:
 			return false;
 	}
 
-	bool isEmpty()
-	{
-		if (left == nullptr && right == nullptr)
-			return true;
-		else
-			return false;
-	}
-
 	void print()
 	{
-		if ( opcode != 0 )
+		if ( !valueOnlyNode )
+		{
 			outs() << "\tInstruction: " << getOpcodeName() << " (opcode=" << opcode << ")";
-		if ( Val != nullptr )
+			outs() << " Name = " << Name;
+		}
+		else
 		{
 			outs() << "\t      Value: ";
-
 			if ( Val->hasName() )
 				outs() << Val->getName();
 			else
-				outs() << "<unnamed value>";
+				outs() << Name;
 		}
 		outs() << " (ID: " << ID << ")\n";
 		if ( left != nullptr )

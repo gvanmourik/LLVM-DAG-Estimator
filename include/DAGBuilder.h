@@ -4,19 +4,20 @@
 #include "DAGNode.h"
 
 typedef std::unordered_map<int, DAGNode*> DAGVertexList;
-typedef std::unordered_map<Value*, int> DAGValueList;
+typedef std::unordered_map<std::string, int> DAGNameList;
 
 
 class DAGBuilder {
 
 private:
 	DAGVertexList DAGVertices;
-	DAGValueList keyByValue;
+	DAGNameList keyByName;
 	int ID;
+	int NameCount;
 
 
 public:
-	DAGBuilder() : ID(0) {}
+	DAGBuilder() : ID(0), NameCount(-1) {}
 	~DAGBuilder() {}
 
 	DAGNode* getRoot() { return DAGVertices[0]; }
@@ -30,33 +31,22 @@ public:
 			return false;
 
 		/// Add operator
-		addVertex(inst);
+		DAGNode *instNode = addVertex(inst);
 
 		/// Add operands
+		auto iter = inst->op_begin();
+		llvm::Value *val = iter->get();
 		if ( hasTwoOperands(inst) )
 		{
-			llvm::Value *valA = inst->op_begin()->get();
-			llvm::Value *valB = inst->op_end()->get();
-
-			if ( !isValPresent(valA) )
-				addVertex(inst, valA);
-			// Access the parent node with ID-2 because of the two
-			// newly added vertices.
-			addEdge(DAGVertices[ID-2], DAGVertices[keyByValue[valA]]);
-
-			if ( !isValPresent(valB) )
-				addVertex(inst, valB);
-			addEdge(DAGVertices[ID-2], DAGVertices[keyByValue[valB]]);
+			addOperand(val, inst, instNode); //first
+			
+			iter++;
+			val = iter->get();
+			addOperand(val, inst, instNode); //second
 		}
 		else
 		{
-			llvm::Value *valA = inst->op_begin()->get();
-
-			if ( !isValPresent(valA) )
-				addVertex(inst, valA);
-			// Access the parent node with ID-2 because of the two
-			// newly added vertices.
-			addEdge(DAGVertices[ID-2], DAGVertices[keyByValue[valA]]);
+			addOperand(val, inst, instNode);
 		}
 
 		return true;
@@ -65,33 +55,73 @@ public:
 	void addEdge(DAGNode *parentNode, DAGNode *childNode)
 	{
 		parentNode->addAdjNode(childNode);
-		childNode->addAdjNode(parentNode);
 
-		if ( parentNode->isEmpty() )
-		{
-			if ( parentNode->leftIsEmpty() )
-				parentNode->setLeft(childNode);
-			else
-				parentNode->setRight(childNode);
-		}
+		if ( parentNode->leftIsEmpty() )
+			parentNode->setLeft(childNode);
+		else
+			parentNode->setRight(childNode);
 	}
 	
-	void addVertex(llvm::Instruction *inst)
+	DAGNode* addVertex(llvm::Instruction *inst)
 	{
 		DAGVertices[ID] = new DAGNode(inst, ID);
+		if ( inst->hasName() )
+			DAGVertices[ID]->setName( inst->getName() );
+		else
+			DAGVertices[ID]->setName( genName() );
+		
+		keyByName[ DAGVertices[ID]->getName() ] = ID;
+		DAGNode *node = DAGVertices[ID];
+		ID++;
+
+		return node;
+	}
+
+	void addVertex(llvm::Value *value, llvm::Instruction *inst, std::string name)
+	{
+		DAGVertices[ID] = new DAGNode(inst, value, ID);
+		DAGVertices[ID]->setName(name);
+
+		keyByName[name] = ID;
 		ID++;
 	}
 
-	void addVertex(llvm::Instruction *inst, llvm::Value *value)
+	void addOperand(llvm::Value *value, llvm::Instruction *inst, DAGNode* instNode)
 	{
-		DAGVertices[ID] = new DAGNode(inst, value, ID);
-		keyByValue[value] = ID;
-		ID++;
+		DAGNode *operandNode;
+		std::string name = getNewName(value);
+		if ( !isNamePresent(name) )
+			addVertex(value, inst, name);
+		else
+			resetNameCount(value); //revert count
+
+		operandNode = DAGVertices[keyByName[name]];
+		addEdge(instNode, operandNode);
+	}
+
+	std::string getNewName(llvm::Value *target)
+	{
+		if ( target->hasName() )
+			return target->getName();
+		else 
+			return genName();
+	}
+
+	std::string genName()
+	{
+		NameCount++;
+		return "Val" + std::to_string(NameCount);
+	}
+
+	void resetNameCount(llvm::Value *target)
+	{
+		if ( !target->hasName() )
+			NameCount--;
 	}
 	
-	bool isValPresent(llvm::Value* value)
+	bool isNamePresent(std::string name)
 	{
-		if( keyByValue.count(value) == 0 )
+		if( keyByName.count(name) == 0 )
 			return false;
 		else
 			return true;
