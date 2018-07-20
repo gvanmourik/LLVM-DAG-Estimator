@@ -1,12 +1,14 @@
 #ifndef LOOP_INFO_ANALYSIS_PASS_H
 #define LOOP_INFO_ANALYSIS_PASS_H
 
-#include <map>
+#include <unordered_map>
 #include <llvm/IR/Function.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Support/raw_ostream.h>
 
 #include <llvm/Analysis/LoopInfoAnalysis.h>
+
+#include "DAGBuilder.h"
 
 using namespace llvm;
 
@@ -32,7 +34,7 @@ public:
 	/// Helper function
 	void gatherAnalysis(Function &function, Analysis_t &analysis, FunctionAnalysisManager &FAM)
 	{
-		outs() << "----------------------------------------\n";
+		// outs() << "----------------------------------------\n";
 		outs() << "Loop Analysis Results (pass):\n";
 		outs() << "\tFunction = " << function.getName() << "()" << "\n";
 
@@ -44,12 +46,14 @@ public:
 			analysis[*iterL] = new LoopInfoAnalysis(*iterL);
 			emitLoopInfo(*iterL, analysis);
 		}
-		outs() << "----------------------------------------\n";
+		// outs() << "----------------------------------------\n";
 	}
 
 	/// Supports nested loops
 	void emitLoopInfo(Loop *L, Analysis_t &analysis)
 	{
+		DAGBuilder *builder = new DAGBuilder();
+
 		for (Loop::block_iterator iterB=L->block_begin(); iterB != L->block_end(); ++iterB)
 		{
 			BasicBlock *BB = *iterB;
@@ -57,6 +61,10 @@ public:
 			for (BasicBlock::iterator iterI = BB->begin(), end = BB->end(); iterI != end; ++iterI)
 			{	
 				Instruction *I = &*iterI;
+
+				builder->add(I);
+
+
 				switch ( I->getOpcode() ) {
 					case (Instruction::Load):
 						analysis[L]->readCount++;
@@ -72,7 +80,9 @@ public:
 			analysis[L]->bbCount++;
 		}
 
-		analysis[L]->printAnalysis();
+		builder->print();
+
+		// analysis[L]->printAnalysis();
 
 		std::vector<Loop*> subLoops = L->getSubLoops();
 		for (Loop::iterator iterSL=subLoops.begin(), lastSL=subLoops.end(); iterSL != lastSL; ++iterSL)

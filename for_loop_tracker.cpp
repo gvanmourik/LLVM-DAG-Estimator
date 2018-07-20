@@ -39,6 +39,7 @@
 
 /// Custom analysis passes
 #include "LoopInfoAnalysisPass.h"
+#include "DAGNode.h"
 
 using namespace llvm;
 
@@ -122,13 +123,13 @@ int main(int argc, char* argv[])
 	FAM->registerPass([&]{ return LoopInfoAnalysisPass(); });
 	/// Collect and print result
 	auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
-	print(result); //prints in reverse order
+	// print(result); //prints in reverse order
 
 
 	/// Transform passes	
-	outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //print before
+	// outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //print before
 	FPM->run(*ForLoopFnc, *FAM);
-	outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //print after
+	// outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //print after
 	/// CFG After
 	#ifdef GEN_CFG
 		generateCFG(ForLoopFnc, "ForLoopFncAfter", passBuilder, false);
