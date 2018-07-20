@@ -54,12 +54,13 @@ public:
 
 	void addEdge(DAGNode *parentNode, DAGNode *childNode)
 	{
-		parentNode->addAdjNode(childNode);
-
-		if ( parentNode->leftIsEmpty() )
-			parentNode->setLeft(childNode);
-		else
-			parentNode->setRight(childNode);
+		if ( childNode != nullptr ) 
+		{
+			if ( parentNode->leftIsEmpty() )
+				parentNode->setLeft(childNode);
+			else
+				parentNode->setRight(childNode);
+		}
 	}
 	
 	DAGNode* addVertex(llvm::Instruction *inst)
@@ -156,6 +157,15 @@ public:
 			return true;
 		else
 			return false;
+	}
+
+	void collectAdjNodes()
+	{
+		for (int i = 0; i < ID; ++i)
+		{
+			DAGVertices[i]->addAdjNodes( DAGVertices[i]->getLeft() );
+			DAGVertices[i]->addAdjNodes( DAGVertices[i]->getRight() );
+		}
 	}
 
 	void print()

@@ -80,6 +80,7 @@ public:
 			analysis[L]->bbCount++;
 		}
 
+		builder->collectAdjNodes();
 		builder->print();
 
 		// analysis[L]->printAnalysis();

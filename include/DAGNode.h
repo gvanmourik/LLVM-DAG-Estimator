@@ -56,6 +56,8 @@ public:
 
 	int getID() { return ID; }
 	Value* getValue() { return Val; }
+	DAGNode* getLeft() { return left; }
+	DAGNode* getRight() { return right; }
 	DAGNode* getAdjNode(int ID) { return adjNodes[ID]; }
 	DAGNodeList getAdjNodes() { return adjNodes; }
 	llvm::Instruction* getInst() { return Inst; }
@@ -64,7 +66,15 @@ public:
 	void setLeft(DAGNode *assignedNode) { left = assignedNode; }
 	void setRight(DAGNode *assignedNode) { right = assignedNode; }
 	void setValue(llvm::Value *val) { Val = val; }
-	void addAdjNode(DAGNode *node) { adjNodes[node->getID()] = node; }
+	void addAdjNodes(DAGNode *node) 
+	{ 
+		if ( node != nullptr )
+		{
+			adjNodes[node->getID()] = node;
+			addAdjNodes( node->getLeft() );
+			addAdjNodes( node->getRight() );
+		}
+	}
 	void setName(std::string name) { Name = name; }
 
 	bool leftIsEmpty()
