@@ -14,11 +14,11 @@ usage() {
 }
 do_default() {
 	make
-	./.for_loop_tracker $ITERATIONS $OPT_LEVEL
+	./for_loop_tracker $ITERATIONS $OPT_LEVEL
 }
 do_cfg() {
 	make cfg=true
-	./.for_loop_tracker $ITERATIONS $OPT_LEVEL
+	./for_loop_tracker $ITERATIONS $OPT_LEVEL
 	scripts/cfg_convert_and_move
 }
 
