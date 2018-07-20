@@ -9,6 +9,7 @@ for_loop_tracker
 
 ## Directories
 images/
+genIR/
 
 ## Other
 .DS_Store
