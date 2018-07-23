@@ -168,6 +168,12 @@ public:
 		}
 	}
 
+	void fini()
+	{
+		outs() << "Finalizing DAG build...\n";
+		collectAdjNodes();
+	}
+
 	void print()
 	{
 		outs() << "\n";
