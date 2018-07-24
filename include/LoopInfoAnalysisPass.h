@@ -82,6 +82,7 @@ public:
 
 		builder->fini();
 		builder->print();
+		builder->printDependencyGraph();
 
 		// analysis[L]->printAnalysis();
 

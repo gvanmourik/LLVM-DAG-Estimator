@@ -62,6 +62,8 @@ public:
 	DAGNodeList getAdjNodes() { return adjNodes; }
 	llvm::Instruction* getInst() { return Inst; }
 	std::string getName() { return Name; }
+	unsigned getOpcode() { return opcode; }
+	bool isValueOnlyNode() { return valueOnlyNode; }
 
 	void setLeft(DAGNode *assignedNode) { left = assignedNode; }
 	void setRight(DAGNode *assignedNode) { right = assignedNode; }
@@ -80,6 +82,14 @@ public:
 	bool leftIsEmpty()
 	{
 		if (left == nullptr)
+			return true;
+		else 
+			return false;
+	}
+
+	bool rightIsEmpty()
+	{
+		if (right == nullptr)
 			return true;
 		else 
 			return false;
@@ -134,5 +144,8 @@ public:
 	}
 
 };
+
+typedef std::unordered_map<int, DAGNode*> DAGVertexList;
+typedef std::unordered_map<std::string, int> DAGNameList;
 
 #endif /* DAG_NODE_H */ 

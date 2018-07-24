@@ -148,7 +148,6 @@ int main(int argc, char* argv[])
 	// GenericValue value = engine->runFunction(ForLoopFnc, Args);
 
 	// TEST
-	outs() << *module << "\n";
 	FAM->getResult<LoopInfoAnalysisPass>(*TestFnc);
 	GenericValue value = engine->runFunction(TestFnc, Args);
 

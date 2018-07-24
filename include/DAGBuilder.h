@@ -2,22 +2,23 @@
 #define DAG_BUILDER_H
 
 #include "DAGNode.h"
-
-typedef std::unordered_map<int, DAGNode*> DAGVertexList;
-typedef std::unordered_map<std::string, int> DAGNameList;
+#include "DepNode.h"
 
 
 class DAGBuilder {
 
 private:
 	DAGVertexList DAGVertices;
+	DepVertexList DependenceGraph;
 	DAGNameList keyByName;
+	DepNameList depKeyByName;
 	int ID;
 	int NameCount;
+	int DepID; // for dependence graph
 
 
 public:
-	DAGBuilder() : ID(0), NameCount(-1) {}
+	DAGBuilder() : ID(0), NameCount(-1), DepID(0) {}
 	~DAGBuilder() {}
 
 	DAGNode* getRoot() { return DAGVertices[0]; }
@@ -127,6 +128,14 @@ public:
 		else
 			return true;
 	}
+
+	bool isNamePresentDep(std::string name)
+	{
+		if( depKeyByName.count(name) == 0 )
+			return false;
+		else
+			return true;
+	}
 			
 	/// Check if the instruction has two operands (zeroth index is 0)
 	bool hasTwoOperands(llvm::Instruction *inst)
@@ -168,15 +177,105 @@ public:
 		}
 	}
 
+	void createDependenceGraph()
+	{
+		for (int i = 0; i < ID; ++i)
+		{
+			traverseDAGNode(DAGVertices[i]);
+		}
+	}
+
+	void traverseDAGNode(DAGNode *node)
+	{
+		if ( node != nullptr )
+		{	
+			/// Store has opcode = 31
+			if ( node->getOpcode() == 31 )
+			{
+				// outs() << "building dependence unit... (" << node->getName() <<  ")\n";
+				buildDependenceUnit(node);
+			}
+			traverseDAGNode(node->getLeft());
+			traverseDAGNode(node->getRight());
+		} 
+	}
+
+	void buildDependenceUnit(DAGNode *node)
+	{
+		// Add primaryOperand
+		DAGNode *nodeSelector = node->getRight();
+		bool isOperator = false;
+		DepNode* primaryOperand = addDep(nodeSelector, nullptr, isOperator);
+
+		// Add operator
+		nodeSelector = node->getLeft();
+		addDep(nodeSelector, primaryOperand, true);
+
+		// Add operands on which the primaryOperand depends
+		addDep(nodeSelector->getLeft(), primaryOperand, isOperator);
+		addDep(nodeSelector->getRight(), primaryOperand, isOperator);
+	}
+
+	DepNode* addDep(DAGNode *node, DepNode* primaryOperand,  bool isOperator)
+	{
+		DepNode *op;
+		std::string name;
+		std::string opcodeName = node->getInst()->getOpcodeName();
+		if (isOperator)
+			name = node->getName();
+		else
+			name = findValueName(node);
+
+		if ( isNamePresentDep(name) )
+			op = DependenceGraph[depKeyByName[name]];
+		else
+			op = newDepNode(name, opcodeName, isOperator);
+
+		if (primaryOperand == nullptr)
+			return op; // adding a primaryOperand
+
+		primaryOperand->addOp(op, op->getID());
+		return nullptr; // adding a member
+	}
+
+	std::string findValueName(DAGNode *operatorNode)
+	{
+		DAGNode *node = operatorNode;
+		while ( !node->isValueOnlyNode() )
+		{
+			node = node->getLeft();				
+		}
+		return node->getName();
+	}
+
+	DepNode* newDepNode(std::string name, std::string opcodeName, bool isOperator)
+	{
+		DepNode* node = new DepNode(name, DepID, opcodeName, isOperator);
+		DependenceGraph[DepID] = node;
+		depKeyByName[name] = DepID;
+		DepID++;
+		return node;
+	}
+
 	void fini()
 	{
 		outs() << "Finalizing DAG build...\n";
 		collectAdjNodes();
+		outs() << "Configuring dependence graph...\n";
+		createDependenceGraph();
+	}
+
+	bool DAGIsEmpty()
+	{
+		if ( DAGVertices[0]->leftIsEmpty() && DAGVertices[0]->rightIsEmpty() )
+			return true;
+		else
+			return false;
 	}
 
 	void print()
 	{
-		outs() << "\n";
+		outs() << "\nDAG Nodes:\n";
 		for (int i = 0; i < ID; ++i)
 		{
 			outs() << "---------------------------------------------------\n";
@@ -184,6 +283,19 @@ public:
 			DAGVertices[i]->print();
 			outs() << "     Adjacent Nodes: ";
 			DAGVertices[i]->printAdjNodeIDs();
+			outs() << "---------------------------------------------------\n";
+		}
+		outs() << "\n";
+	}
+
+	void printDependencyGraph()
+	{
+		outs() << "\nDependency Nodes:\n";
+		for (int i = 0; i < DepID; ++i)
+		{
+			outs() << "---------------------------------------------------\n";
+			outs() << "DepNode" << i << ":\n";
+			DependenceGraph[i]->print();
 			outs() << "---------------------------------------------------\n";
 		}
 		outs() << "\n";
