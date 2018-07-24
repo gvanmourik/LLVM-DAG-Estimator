@@ -265,9 +265,9 @@ Function* generateTest(LLVMContext &context, IRBuilder<> &builder, Module* modul
 	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", TestFnc);
 	
 	/// Variables
-	Value *if_i_LT_N, *a, *b, *c, *d, *e, *f, 
+	Value *if_i_LT_N, *a, *b, *c, *d, *e, *f, *g, 
 		  *i, *aVal, *bVal, *cVal, *dVal, *eVal, 
-		  *fVal, *iVal;
+		  *fVal, *gVal, *iVal;
 
 	/// EntryBB
 	builder.SetInsertPoint(EntryBB);
@@ -277,10 +277,11 @@ Function* generateTest(LLVMContext &context, IRBuilder<> &builder, Module* modul
 	d = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "d");
 	e = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "e");
 	f = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "f");
+	g = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "g");
 	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
 	builder.CreateStore(two, b);
 	builder.CreateStore(three, d);
-	builder.CreateStore(two, e);
+	builder.CreateStore(two, g);
 	builder.CreateStore(zero, i);
 	builder.CreateBr(ForEntryBB);
 
@@ -292,6 +293,10 @@ Function* generateTest(LLVMContext &context, IRBuilder<> &builder, Module* modul
 
 	/// ForBodyBB
 	builder.SetInsertPoint(ForBodyBB);
+	// e = 2 * g
+	gVal = builder.CreateLoad(g, "gVal");
+	eVal = builder.CreateMul(two, gVal, "2*g");
+	builder.CreateStore(eVal, e);
 	// a = b + e
 	bVal = builder.CreateLoad(b, "bVal");
 	eVal = builder.CreateLoad(e, "eVal");
