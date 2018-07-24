@@ -81,8 +81,8 @@ public:
 		}
 
 		builder->fini();
-		builder->print();
-		builder->printDependencyGraph();
+		// builder->print();
+		// builder->printDependencyGraph();
 
 		// analysis[L]->printAnalysis();
 

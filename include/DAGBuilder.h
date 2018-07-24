@@ -23,6 +23,8 @@ public:
 
 	DAGNode* getRoot() { return DAGVertices[0]; }
 
+
+	/// DAG
 	bool add(llvm::Instruction *inst)
 	{
 		/// Check if instruction is invalid operator (aka branch)
@@ -128,16 +130,7 @@ public:
 		else
 			return true;
 	}
-
-	bool isNamePresentDep(std::string name)
-	{
-		if( depKeyByName.count(name) == 0 )
-			return false;
-		else
-			return true;
-	}
 			
-	/// Check if the instruction has two operands (zeroth index is 0)
 	bool hasTwoOperands(llvm::Instruction *inst)
 	{
 		int count = 0;
@@ -177,6 +170,10 @@ public:
 		}
 	}
 
+	/// DEPENDENCY GRAPH
+	/**
+	 * @brief      Creates a variable dependency graph from the DAG.
+	 */
 	void createDependenceGraph()
 	{
 		for (int i = 0; i < ID; ++i)
@@ -184,7 +181,11 @@ public:
 			traverseDAGNode(DAGVertices[i]);
 		}
 	}
-
+	/**
+	 * @brief      Recursively traverse each DAG node.
+	 *
+	 * @param      node  The DAG node
+	 */
 	void traverseDAGNode(DAGNode *node)
 	{
 		if ( node != nullptr )
@@ -209,14 +210,14 @@ public:
 
 		// Add operator
 		nodeSelector = node->getLeft();
-		addDep(nodeSelector, primaryOperand, true);
+		DepNode* depOperator = addDep(nodeSelector, primaryOperand, true);
 
 		// Add operands on which the primaryOperand depends
-		addDep(nodeSelector->getLeft(), primaryOperand, isOperator);
-		addDep(nodeSelector->getRight(), primaryOperand, isOperator);
+		addDep(nodeSelector->getLeft(), depOperator, isOperator);
+		addDep(nodeSelector->getRight(), depOperator, isOperator);
 	}
 
-	DepNode* addDep(DAGNode *node, DepNode* primaryOperand,  bool isOperator)
+	DepNode* addDep(DAGNode *node, DepNode* parentNode,  bool isOperator)
 	{
 		DepNode *op;
 		std::string name;
@@ -231,11 +232,11 @@ public:
 		else
 			op = newDepNode(name, opcodeName, isOperator);
 
-		if (primaryOperand == nullptr)
-			return op; // adding a primaryOperand
+		if (parentNode == nullptr)
+			return op; // adding a parentNode
 
-		primaryOperand->addOp(op, op->getID());
-		return nullptr; // adding a member
+		parentNode->addOp(op, op->getID());
+		return op; // adding a member
 	}
 
 	std::string findValueName(DAGNode *operatorNode)
@@ -248,6 +249,14 @@ public:
 		return node->getName();
 	}
 
+	bool isNamePresentDep(std::string name)
+	{
+		if( depKeyByName.count(name) == 0 )
+			return false;
+		else
+			return true;
+	}
+
 	DepNode* newDepNode(std::string name, std::string opcodeName, bool isOperator)
 	{
 		DepNode* node = new DepNode(name, DepID, opcodeName, isOperator);
@@ -257,12 +266,83 @@ public:
 		return node;
 	}
 
+	/// TRAVERSAL
+
+	DepNode* findDepRoot()
+	{
+		DepNode *currentNode;
+		for (int i = 0; i < DepID; ++i)
+		{
+			currentNode = DependenceGraph[i];
+			if ( currentNode->hasDependents() && !currentNode->isADependent() )
+				return currentNode;
+		}
+		return nullptr;
+	}
+
+	int width()
+	{
+		DepNode *root = findDepRoot();
+		int maxCount = 0;
+		int widthCount = 0;
+		widthWrapper(root, widthCount, maxCount);
+		
+		return maxCount;
+	}
+
+	int depth()
+	{
+		DepNode *root = findDepRoot();
+		int maxDepth = 0;
+		int depthCount = 1;
+		widthWrapper(root, depthCount, maxDepth);
+
+		return maxDepth;
+	}
+
+	void widthWrapper(DepNode *node, int count, int &maxCount)
+	{
+		auto Ops = node->getOps();
+		if ( !node->isAnOperator() )
+			count++;
+
+		for (auto iter=Ops.begin(); iter!=Ops.end(); ++iter)
+		{
+			if ( maxCount < count )
+			{
+				maxCount = count;
+			}
+			widthWrapper(iter->second, count, maxCount);
+		}
+	}
+
+	// void depthWrapper(DepNode *node, int count, int &maxCount)
+	// {
+	// 	auto Ops = node->getOps();
+	// 	if ( !node->isAnOperator() )
+	// 		count++;
+
+	// 	for (auto iter=Ops.begin(); iter!=Ops.end(); ++iter)
+	// 	{
+	// 		if ( maxCount < count )
+	// 		{
+	// 			maxCount = count;
+	// 		}
+	// 		depthWrapper(iter->second, count, maxCount);
+	// 	}
+	// }
+
+
 	void fini()
 	{
 		outs() << "Finalizing DAG build...\n";
 		collectAdjNodes();
 		outs() << "Configuring dependence graph...\n";
 		createDependenceGraph();
+
+		printDependencyGraph();
+		outs() << "Width = " << width() << "\n";
+		outs() << "Depth = " << depth() << "\n";
 	}
 
 	bool DAGIsEmpty()
