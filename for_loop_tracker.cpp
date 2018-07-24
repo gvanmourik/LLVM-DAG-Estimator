@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 	module->setTargetTriple( targetMachine->getTargetTriple().getTriple() );
 
 	/// Returned IR function
-	// static Function *ForLoopFnc = generateForLoop( context, builder, module, N );
+	static Function *ForLoopFnc = generateForLoop( context, builder, module, N );
 	
 	// TEST
 	static Function *TestFnc = generateTest( context, builder, module, N );
@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
 	/// Custom analysis pass
 	FAM->registerPass([&]{ return LoopInfoAnalysisPass(); });
 	/// Collect and print result
-	// auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
+	auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
 	// print(result); //prints in reverse order
 
 
@@ -145,11 +145,11 @@ int main(int argc, char* argv[])
 
 	auto engine = buildExecutionEngine(mainModule);
 	std::vector<GenericValue> Args(0); // Empty vector as no args are passed
-	// GenericValue value = engine->runFunction(ForLoopFnc, Args);
+	GenericValue value = engine->runFunction(ForLoopFnc, Args);
 
 	// TEST
-	FAM->getResult<LoopInfoAnalysisPass>(*TestFnc);
-	GenericValue value = engine->runFunction(TestFnc, Args);
+	// FAM->getResult<LoopInfoAnalysisPass>(*TestFnc);
+	// GenericValue value = engine->runFunction(TestFnc, Args);
 
 	outs() << "Return value = " << value.IntVal << "\n";
 	outs() << "Opt Level: " << optLevelString << "\n";

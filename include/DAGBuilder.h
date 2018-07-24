@@ -203,25 +203,37 @@ public:
 
 	void buildDependenceUnit(DAGNode *node)
 	{
-		// Add primaryOperand
-		DAGNode *nodeSelector = node->getRight();
-		bool isOperator = false;
-		DepNode* primaryOperand = addDep(nodeSelector, nullptr, isOperator);
+		if ( node->getLeft()->isValueOnlyNode() )
+		{
+			// Add primaryOperand
+			DepNode* primaryOperand = addDep(node->getRight(), nullptr, false);
 
-		// Add operator
-		nodeSelector = node->getLeft();
-		DepNode* depOperator = addDep(nodeSelector, primaryOperand, true);
+			// Add value on which the primaryOperand depends
+			addDep(node->getLeft(), primaryOperand, false);
+		}
+		else
+		{
+			// Add primaryOperand
+			DAGNode *nodeSelector = node->getRight();
+			bool isOperator = false;
+			DepNode* primaryOperand = addDep(nodeSelector, nullptr, isOperator);
 
-		// Add operands on which the primaryOperand depends
-		addDep(nodeSelector->getLeft(), depOperator, isOperator);
-		addDep(nodeSelector->getRight(), depOperator, isOperator);
+			// Add operator
+			nodeSelector = node->getLeft();
+			DepNode* depOperator = addDep(nodeSelector, primaryOperand, true);
+
+			// Add operands on which the primaryOperand depends
+			addDep(nodeSelector->getLeft(), depOperator, isOperator);
+			addDep(nodeSelector->getRight(), depOperator, isOperator);
+		}
 	}
 
 	DepNode* addDep(DAGNode *node, DepNode* parentNode,  bool isOperator)
 	{
 		DepNode *op;
-		std::string name;
-		std::string opcodeName = node->getInst()->getOpcodeName();
+		std::string name, opcodeName;
+		opcodeName = node->getOpcodeName();
+
 		if (isOperator)
 			name = node->getName();
 		else
@@ -267,7 +279,6 @@ public:
 	}
 
 	/// TRAVERSAL
-
 	DepNode* findDepRoot()
 	{
 		DepNode *currentNode;
@@ -332,25 +343,18 @@ public:
 	// 	}
 	// }
 
-
 	void fini()
 	{
 		outs() << "Finalizing DAG build...\n";
 		collectAdjNodes();
 		outs() << "Configuring dependence graph...\n";
+		// print();
 		createDependenceGraph();
 
+		print();
 		printDependencyGraph();
 		outs() << "Width = " << width() << "\n";
 		outs() << "Depth = " << depth() << "\n";
-	}
-
-	bool DAGIsEmpty()
-	{
-		if ( DAGVertices[0]->leftIsEmpty() && DAGVertices[0]->rightIsEmpty() )
-			return true;
-		else
-			return false;
 	}
 
 	void print()

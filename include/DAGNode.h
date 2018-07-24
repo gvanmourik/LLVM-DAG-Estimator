@@ -21,7 +21,7 @@ private:
 	DAGNodeList adjNodes;
 
 public:
-	DAGNode() : opcode(0), ID(-1), valueOnlyNode(false) {}
+	DAGNode() : Inst(nullptr), opcode(0), ID(-1), valueOnlyNode(false) {}
 	DAGNode(llvm::Instruction *inst, int id) : Inst(inst)
 	{
 		opcode = inst->getOpcode();
