@@ -5,8 +5,8 @@
 #include <llvm/IR/Function.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Analysis/LoopInfoAnalysis.h>
 
+#include "LoopInfoAnalysis.h"
 #include "DAGBuilder.h"
 
 using namespace llvm;
@@ -34,8 +34,9 @@ public:
 	void gatherAnalysis(Function &function, Analysis_t &analysis, FunctionAnalysisManager &FAM)
 	{
 		// outs() << "----------------------------------------\n";
-		outs() << "Loop Analysis Results (pass):\n";
-		outs() << "\tFunction = " << function.getName() << "()" << "\n";
+		// outs() << "Loop Analysis Results (custom pass):\n";
+		// outs() << "\tFunction = " << function.getName() << "()" << "\n";
+		std::string fncName = function.getName();
 
 		LoopInfo &LI = FAM.getResult<LoopAnalysis>(function);
 
@@ -43,6 +44,7 @@ public:
 		for (LoopInfo::iterator iterL=LI.begin(), endLI=LI.end(); iterL != endLI; ++iterL)
 		{
 			analysis[*iterL] = new LoopInfoAnalysis(*iterL);
+			analysis[*iterL]->setFunctionName(fncName);
 			emitLoopInfo(*iterL, analysis);
 		}
 		// outs() << "----------------------------------------\n";
@@ -52,6 +54,7 @@ public:
 	void emitLoopInfo(Loop *L, Analysis_t &analysis)
 	{
 		DAGBuilder *builder = new DAGBuilder();
+		builder->init();
 
 		for (Loop::block_iterator iterB=L->block_begin(); iterB != L->block_end(); ++iterB)
 		{
@@ -62,7 +65,6 @@ public:
 				Instruction *I = &*iterI;
 
 				builder->add(I);
-
 
 				switch ( I->getOpcode() ) {
 					case (Instruction::Load):
@@ -79,9 +81,10 @@ public:
 			analysis[L]->bbCount++;
 		}
 
+		builder->lock();
 		builder->fini();
-		// builder->print();
-		// builder->printDependencyGraph();
+		analysis[L]->width = builder->getVarWidth();
+		analysis[L]->depth = builder->getVarDepth();
 
 		// analysis[L]->printAnalysis();
 
