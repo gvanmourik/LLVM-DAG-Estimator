@@ -1,6 +1,7 @@
 #ifndef DAG_BUILDER_H
 #define DAG_BUILDER_H
 
+#include <queue>
 #include "DAGNode.h"
 #include "DepNode.h"
 
@@ -291,27 +292,48 @@ public:
 		return nullptr;
 	}
 
-	int width()
+	int variableWidth()
 	{
 		DepNode *root = findDepRoot();
-		int maxCount = 0;
-		int widthCount = 0;
-		widthWrapper(root, widthCount, maxCount);
-		
-		return maxCount;
+		std::queue<DepNode*> wavefront;
+		wavefront.push(root);
+
+		int maxWidth = 1; // to avoid 1st assignment in while
+		int width = 0;
+		DepNode *selector;
+		DepNodeList ops;
+		while ( !wavefront.empty() )
+		{
+			width = wavefront.size();
+			if ( maxWidth < width )
+				maxWidth = width;
+
+			selector = wavefront.front();
+			wavefront.pop();
+
+			if ( selector->hasDependents() )
+			{
+				ops = selector->getOps();
+				for (auto iter=ops.begin(); iter!=ops.end(); ++iter)
+				{
+					wavefront.push(iter->second);
+				}
+			}
+		}
+		return maxWidth;
 	}
 
-	int depth()
+	int variableDepth()
 	{
 		DepNode *root = findDepRoot();
 		int maxDepth = 0;
 		int depthCount = 1;
-		widthWrapper(root, depthCount, maxDepth);
+		depthWrapper(root, depthCount, maxDepth);
 
 		return maxDepth;
 	}
 
-	void widthWrapper(DepNode *node, int count, int &maxCount)
+	void depthWrapper(DepNode *node, int count, int &maxCount)
 	{
 		auto Ops = node->getOps();
 		if ( !node->isAnOperator() )
@@ -323,38 +345,21 @@ public:
 			{
 				maxCount = count;
 			}
-			widthWrapper(iter->second, count, maxCount);
+			depthWrapper(iter->second, count, maxCount);
 		}
 	}
-
-	// void depthWrapper(DepNode *node, int count, int &maxCount)
-	// {
-	// 	auto Ops = node->getOps();
-	// 	if ( !node->isAnOperator() )
-	// 		count++;
-
-	// 	for (auto iter=Ops.begin(); iter!=Ops.end(); ++iter)
-	// 	{
-	// 		if ( maxCount < count )
-	// 		{
-	// 			maxCount = count;
-	// 		}
-	// 		depthWrapper(iter->second, count, maxCount);
-	// 	}
-	// }
 
 	void fini()
 	{
 		outs() << "Finalizing DAG build...\n";
 		collectAdjNodes();
 		outs() << "Configuring dependence graph...\n";
-		// print();
 		createDependenceGraph();
 
 		print();
 		printDependencyGraph();
-		outs() << "Width = " << width() << "\n";
-		outs() << "Depth = " << depth() << "\n";
+		outs() << "Width = " << variableWidth() << "\n";
+		outs() << "Depth = " << variableDepth() << "\n";
 	}
 
 	void print()
