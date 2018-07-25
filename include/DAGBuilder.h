@@ -27,8 +27,8 @@ public:
 	void lock() { DAGIsLocked = true; }
 
 	//collectAdjNodes() and createDependenceVertices() must be called first
-	int getVarDepWidth() { return variableWidth(); }
-	int getVarDepDepth() { return variableDepth(); }
+	int getVarWidth() { return variableWidth(); }
+	int getVarDepth() { return variableDepth(); }
 
 	void init()
 	{
@@ -385,6 +385,7 @@ public:
 
 	void print()
 	{
+		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
 		outs() << "\nDAG Nodes:\n";
 		for (int i = 0; i < ID; ++i)
 		{
@@ -400,6 +401,7 @@ public:
 
 	void printDependencyGraph()
 	{
+		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
 		outs() << "\nDependency Nodes:\n";
 		for (int i = 0; i < DepID; ++i)
 		{

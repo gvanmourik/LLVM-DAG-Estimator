@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 	module->setTargetTriple( targetMachine->getTargetTriple().getTriple() );
 
 	/// Returned IR function
-	// static Function *ForLoopFnc = generateForLoop( context, builder, module, N );
+	static Function *ForLoopFnc = generateForLoop( context, builder, module, N );
 	
 	// TEST
 	static Function *TestFnc = generateTest( context, builder, module, N );
@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
 	/// CFG Before
 	#ifdef GEN_CFG
 		generateCFG(TestFnc, "TestFnc", passBuilder, false);
-		// generateCFG(ForLoopFnc, "ForLoopFncBefore", passBuilder, false);
+		generateCFG(ForLoopFnc, "ForLoopFncBefore", passBuilder, false);
 	#endif
 
 	/// Function analysis and pass managers
@@ -129,8 +129,9 @@ int main(int argc, char* argv[])
 	/// Custom analysis pass
 	FAM->registerPass([&]{ return LoopInfoAnalysisPass(); });
 	/// Collect and print result
-	// auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
-	// print(result); //prints in reverse order
+	// FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
+	auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
+	print(result); //prints in reverse order
 
 
 	/// Transform passes	
@@ -148,10 +149,11 @@ int main(int argc, char* argv[])
 	// GenericValue value = engine->runFunction(ForLoopFnc, Args);
 
 	// TEST
-	FAM->getResult<LoopInfoAnalysisPass>(*TestFnc);
+	result = FAM->getResult<LoopInfoAnalysisPass>(*TestFnc);
+	print(result);
 	GenericValue value = engine->runFunction(TestFnc, Args);
 
-	outs() << "Return value = " << value.IntVal << "\n";
+	outs() << "TestFnc() return value = " << value.IntVal << "\n";
 	outs() << "Opt Level: " << optLevelString << "\n";
 	// outs() << "--->SEE ABOVE for LoopInfoAnalysisPass Results<---\n";
 
@@ -265,25 +267,24 @@ Function* generateTest(LLVMContext &context, IRBuilder<> &builder, Module* modul
 	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", TestFnc);
 	
 	/// Variables
-	Value *if_i_LT_N, *a, *b, *c, *d, *e, *f, *x, *y, 
-		  *i, *aVal, *bVal, *cVal, *dVal, *eVal, 
-		  *fVal, *xVal, *yVal, *iVal;
+	Value *if_i_LT_N, *a, *c, *d, *f, *x, *y, 
+		  *i, *aVal, *cVal, *dVal, *fVal, *xVal, *yVal, *iVal;
 
 	/// EntryBB
 	builder.SetInsertPoint(EntryBB);
 	a = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "a");
-	b = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "b");
+	// b = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "b");
 	c = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "c");
 	d = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "d");
-	e = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "e");
+	// e = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "e");
 	f = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "f");
 	x = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "x");
 	y = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "y");
 	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
 	builder.CreateStore(two, a);
-	builder.CreateStore(two, b);
+	// builder.CreateStore(two, b);
 	builder.CreateStore(three, d);
-	builder.CreateStore(two, e);
+	// builder.CreateStore(two, e);
 	builder.CreateStore(two, x);
 	builder.CreateStore(three, y);
 	builder.CreateStore(zero, i);
