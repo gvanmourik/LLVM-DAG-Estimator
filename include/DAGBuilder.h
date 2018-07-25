@@ -10,24 +10,40 @@ class DAGBuilder {
 
 private:
 	DAGVertexList DAGVertices;
-	DepVertexList DependenceGraph;
+	DepVertexList DependenceVertices;
 	DAGNameList keyByName;
 	DepNameList depKeyByName;
 	int ID;
 	int NameCount;
 	int DepID; // for dependence graph
+	bool hasBeenInitialized;
+	bool DAGIsLocked;
 
 
 public:
-	DAGBuilder() : ID(0), NameCount(-1), DepID(0) {}
+	DAGBuilder() : ID(0), NameCount(-1), DepID(0), hasBeenInitialized(false) {}
 	~DAGBuilder() {}
 
-	DAGNode* getRoot() { return DAGVertices[0]; }
+	void lock() { DAGIsLocked = true; }
 
+	//collectAdjNodes() and createDependenceVertices() must be called first
+	int getVarDepWidth() { return variableWidth(); }
+	int getVarDepDepth() { return variableDepth(); }
+
+	void init()
+	{
+		DAGVertices.clear();
+		DependenceVertices.clear();
+		keyByName.clear();
+		depKeyByName.clear();
+		DAGIsLocked = false;
+		hasBeenInitialized = true;
+	}
 
 	/// DAG
 	bool add(llvm::Instruction *inst)
 	{
+		assert( hasBeenInitialized && "Builder has not been initialized! Do so with init()");
 		/// Check if instruction is invalid operator (aka branch)
 		if ( isInvalidOperator(inst) )
 			return false;
@@ -56,6 +72,7 @@ public:
 		return true;
 	}
 
+private:
 	void addEdge(DAGNode *parentNode, DAGNode *childNode)
 	{
 		if ( childNode != nullptr ) 
@@ -162,8 +179,10 @@ public:
 			return false;
 	}
 
+public:
 	void collectAdjNodes()
 	{
+		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
 		for (int i = 0; i < ID; ++i)
 		{
 			DAGVertices[i]->addAdjNodes( DAGVertices[i]->getLeft() );
@@ -177,16 +196,14 @@ public:
 	 */
 	void createDependenceGraph()
 	{
+		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
 		for (int i = 0; i < ID; ++i)
 		{
 			traverseDAGNode(DAGVertices[i]);
 		}
 	}
-	/**
-	 * @brief      Recursively traverse each DAG node.
-	 *
-	 * @param      node  The DAG node
-	 */
+
+private:
 	void traverseDAGNode(DAGNode *node)
 	{
 		if ( node != nullptr )
@@ -241,7 +258,7 @@ public:
 			name = findValueName(node);
 
 		if ( isNamePresentDep(name) )
-			op = DependenceGraph[depKeyByName[name]];
+			op = DependenceVertices[depKeyByName[name]];
 		else
 			op = newDepNode(name, opcodeName, isOperator);
 
@@ -273,27 +290,16 @@ public:
 	DepNode* newDepNode(std::string name, std::string opcodeName, bool isOperator)
 	{
 		DepNode* node = new DepNode(name, DepID, opcodeName, isOperator);
-		DependenceGraph[DepID] = node;
+		DependenceVertices[DepID] = node;
 		depKeyByName[name] = DepID;
 		DepID++;
 		return node;
 	}
 
 	/// TRAVERSAL
-	DepNode* findDepRoot()
-	{
-		DepNode *currentNode;
-		for (int i = 0; i < DepID; ++i)
-		{
-			currentNode = DependenceGraph[i];
-			if ( currentNode->hasDependents() && !currentNode->isADependent() )
-				return currentNode;
-		}
-		return nullptr;
-	}
-
 	int variableWidth()
 	{
+		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
 		DepNode *root = findDepRoot();
 		std::queue<DepNode*> wavefront;
 		wavefront.push(root);
@@ -325,6 +331,7 @@ public:
 
 	int variableDepth()
 	{
+		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
 		DepNode *root = findDepRoot();
 		int maxDepth = 0;
 		int depthCount = 1;
@@ -349,17 +356,31 @@ public:
 		}
 	}
 
+	DepNode* findDepRoot()
+	{
+		DepNode *currentNode;
+		for (int i = 0; i < DepID; ++i)
+		{
+			currentNode = DependenceVertices[i];
+			if ( currentNode->hasDependents() && !currentNode->isADependent() )
+				return currentNode;
+		}
+		return nullptr;
+	}
+
+public:
 	void fini()
 	{
-		outs() << "Finalizing DAG build...\n";
+		// outs() << "Finalizing DAG build...\n";
 		collectAdjNodes();
-		outs() << "Configuring dependence graph...\n";
+		// outs() << "Configuring dependence graph...\n";
 		createDependenceGraph();
+		// outs() << "Done...use print() and printDependencyGraph() to view.\n";
 
-		print();
-		printDependencyGraph();
-		outs() << "Width = " << variableWidth() << "\n";
-		outs() << "Depth = " << variableDepth() << "\n";
+		// print();
+		// printDependencyGraph();
+		// outs() << "Width = " << variableWidth() << "\n";
+		// outs() << "Depth = " << variableDepth() << "\n";
 	}
 
 	void print()
@@ -384,7 +405,7 @@ public:
 		{
 			outs() << "---------------------------------------------------\n";
 			outs() << "DepNode" << i << ":\n";
-			DependenceGraph[i]->print();
+			DependenceVertices[i]->print();
 			outs() << "---------------------------------------------------\n";
 		}
 		outs() << "\n";
