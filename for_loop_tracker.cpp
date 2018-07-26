@@ -38,8 +38,9 @@
 #include <iostream>
 
 /// Custom analysis passes
-#include "LoopInfoAnalysisPass.h"
-#include "DAGNode.h"
+#include "ModuleInfoPass.h"
+// #include "FunctionInfoPass.h"
+
 
 using namespace llvm;
 
@@ -47,7 +48,8 @@ using namespace llvm;
 Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
 PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString);
 ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module);
-void print(Analysis_t &analysis);
+template<class AnalysisT>
+void print(AnalysisT &analysis);
 static TargetMachine *buildTargetMachine();
 #ifdef GEN_CFG
 	void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug);
@@ -90,10 +92,10 @@ int main(int argc, char* argv[])
 	module->setTargetTriple( targetMachine->getTargetTriple().getTriple() );
 
 	/// Returned IR function
-	static Function *ForLoopFnc = generateForLoop( context, builder, module, N );
-	
-	// TEST
-	static Function *TestFnc = generateTest( context, builder, module, N );
+	// static Function *ForLoopFnc = generateForLoop( context, builder, module, N );
+	// static Function *TestFnc = generateTest( context, builder, module, N );
+	generateForLoop(context, builder, module, N);
+	generateTest(context, builder, module, N);
 
 	/// CFG Before
 	#ifdef GEN_CFG
@@ -106,32 +108,44 @@ int main(int argc, char* argv[])
 	bool DebugAM = false;
 	static FunctionPassManager *FPM = 
 		new FunctionPassManager(DebugPM);
+
+	static ModuleAnalysisManager *MAM = 
+		new ModuleAnalysisManager(DebugAM);
+	// static CGSCCAnalysisManager *CGAM = 
+	// 	new CGSCCAnalysisManager(DebugAM);
 	static FunctionAnalysisManager *FAM = 
 		new FunctionAnalysisManager(DebugAM);
 	static LoopAnalysisManager *LAM = 
 		new LoopAnalysisManager(DebugAM);
 
-	*FPM = passBuilder.buildFunctionSimplificationPipeline(
-		optLevel, 
-		PassBuilder::ThinLTOPhase::None, 
-		DebugPM);
+	// *FPM = passBuilder.buildFunctionSimplificationPipeline(
+	// 	optLevel, 
+	// 	PassBuilder::ThinLTOPhase::None, 
+	// 	DebugPM);
 
 	/// Manually register the proxies used in the pipeline
-	FAM->registerPass([&]{ return LoopAnalysisManagerFunctionProxy(*LAM); });
-	LAM->registerPass([&]{ return FunctionAnalysisManagerLoopProxy(*FAM); });
+	// FAM->registerPass([&]{ return LoopAnalysisManagerFunctionProxy(*LAM); });
+	// LAM->registerPass([&]{ return FunctionAnalysisManagerLoopProxy(*FAM); });
+	// passBuilder.crossRegisterProxies(*LAM, *FAM, *CGAM, *MAM);
+
 	/// Use the below method to register all added transform passes rather than 
 	/// passing in each individual pass as a lambda to register that pass.
 	/// [ example: FAM->registerPass([&]{ return SROA(); }); ]
-	passBuilder.registerFunctionAnalyses(*FAM);
-	passBuilder.registerLoopAnalyses(*LAM);
+	// passBuilder.registerFunctionAnalyses(*FAM);
+	// passBuilder.registerLoopAnalyses(*LAM);
 
 	
-	/// Custom analysis pass
+	/// Custom analysis passes
 	FAM->registerPass([&]{ return LoopInfoAnalysisPass(); });
+	FAM->registerPass([&]{ return FunctionInfoPass(); });
+	MAM->registerPass([&]{ return ModuleInfoPass(*FAM); });
+
+	passBuilder.registerModuleAnalyses(*MAM);
+	passBuilder.registerFunctionAnalyses(*FAM);
+	passBuilder.registerLoopAnalyses(*LAM);
 	/// Collect and print result
-	// FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
-	auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
-	print(result); //prints in reverse order
+	// auto &result = FAM->getResult<LoopInfoAnalysisPass>(*ForLoopFnc);
+	// print(result); //prints in reverse order
 
 
 	/// Transform passes	
@@ -148,12 +162,13 @@ int main(int argc, char* argv[])
 	std::vector<GenericValue> Args(0); // Empty vector as no args are passed
 	// GenericValue value = engine->runFunction(ForLoopFnc, Args);
 
-	// TEST
-	result = FAM->getResult<LoopInfoAnalysisPass>(*TestFnc);
-	print(result);
-	GenericValue value = engine->runFunction(TestFnc, Args);
 
-	outs() << "TestFnc() return value = " << value.IntVal << "\n";
+	// outs() << *module;
+	auto &result = MAM->getResult<ModuleInfoPass>(*module);
+	print<ModuleAnalysisInfo>(result);
+
+
+	// outs() << "TestFnc() return value = " << value.IntVal << "\n";
 	outs() << "Opt Level: " << optLevelString << "\n";
 	// outs() << "--->SEE ABOVE for LoopInfoAnalysisPass Results<---\n";
 
@@ -283,7 +298,7 @@ Function* generateTest(LLVMContext &context, IRBuilder<> &builder, Module* modul
 	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
 	builder.CreateStore(two, a);
 	// builder.CreateStore(two, b);
-	builder.CreateStore(three, d);
+	// builder.CreateStore(three, d);
 	// builder.CreateStore(two, e);
 	builder.CreateStore(two, x);
 	builder.CreateStore(three, y);
@@ -303,10 +318,13 @@ Function* generateTest(LLVMContext &context, IRBuilder<> &builder, Module* modul
 	// eVal = builder.CreateLoad(e, "eVal");
 	// aVal = builder.CreateAdd(bVal, eVal, "b+e");
 	// builder.CreateStore(aVal, a);
-	// d = x * y <-- increase the width
+	// d = x * y + a + 3<-- increase the width
 	xVal = builder.CreateLoad(x, "xVal");
 	yVal = builder.CreateLoad(y, "yVal");
+	aVal = builder.CreateLoad(a, "aVal");
 	dVal = builder.CreateMul(xVal, yVal, "x*y");
+	aVal = builder.CreateAdd(aVal, three, "a+3");
+	dVal = builder.CreateAdd(dVal, aVal, "x*y+a+3");
 	builder.CreateStore(dVal, d);
 	// f = 3 * a
 	aVal = builder.CreateLoad(a, "aVal");
@@ -377,16 +395,12 @@ ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module)
 	return engine;
 }
 
-void print(Analysis_t &analysis)
+template<class AnalysisT>
+void print(AnalysisT &analysis)
 {
 	outs() << "----------------------------------------\n";
-	outs() << "Loop Analysis Results (main):\n";
-	for (Analysis_t::iterator i=analysis.begin(); i != analysis.end(); ++i)
-	{
-		i->second->printAnalysis();
-	}
+	analysis.printAnalysis();
 	outs() << "----------------------------------------\n";
-
 }
 
 static TargetMachine *buildTargetMachine()
