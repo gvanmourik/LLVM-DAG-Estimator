@@ -49,6 +49,8 @@ public:
 			return false;
 		if ( isBranch(inst) )
 			return false;
+		if ( isAlloca(inst) )
+			return false;
 
 		/// Add operator
 		DAGNode *instNode = addVertex(inst);
@@ -112,6 +114,7 @@ private:
 	{
 		DAGNode *operandNode;
 		std::string name = getNewName(value);
+		
 		if ( !isNamePresent(name) )
 			addVertex(value, inst, name);
 		else
@@ -172,8 +175,15 @@ private:
 
 	bool isBranch(llvm::Instruction *inst)
 	{
-		/// 2 is the Opcode for br
-		if (inst->getOpcode() == 2)
+		if (inst->getOpcode() == Instruction::Br)
+			return true;
+		else
+			return false;
+	}
+
+	bool isAlloca(llvm::Instruction *inst)
+	{
+		if (inst->getOpcode() == Instruction::Alloca)
 			return true;
 		else
 			return false;
@@ -389,12 +399,12 @@ public:
 		outs() << "\nDAG Nodes:\n";
 		for (int i = 0; i < ID; ++i)
 		{
-			outs() << "---------------------------------------------------\n";
+			outs() << "-------------------------------------------------------------\n";
 			outs() << "Node" << i << ":\n";
 			DAGVertices[i]->print();
-			outs() << "     Adjacent Nodes: ";
+			outs() << "       Adjacent Nodes: ";
 			DAGVertices[i]->printAdjNodeIDs();
-			outs() << "---------------------------------------------------\n";
+			outs() << "-------------------------------------------------------------\n";
 		}
 		outs() << "\n";
 	}
