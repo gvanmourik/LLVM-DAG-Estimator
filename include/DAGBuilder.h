@@ -114,7 +114,7 @@ private:
 	{
 		DAGNode *operandNode;
 		std::string name = getNewName(value);
-		
+
 		if ( !isNamePresent(name) )
 			addVertex(value, inst, name);
 		else
@@ -218,8 +218,8 @@ private:
 	{
 		if ( node != nullptr )
 		{	
-			/// Store has opcode = 31
-			if ( node->getOpcode() == 31 )
+			auto opCode = node->getOpcode();
+			if ( opCode == Instruction::Store || opCode == Instruction::Ret )
 			{
 				// outs() << "building dependence unit... (" << node->getName() <<  ")\n";
 				buildDependenceUnit(node);
@@ -231,42 +231,64 @@ private:
 
 	void buildDependenceUnit(DAGNode *node)
 	{
-		if ( node->getLeft()->isValueOnlyNode() )
-		{
-			// Add primaryOperand
-			DepNode* primaryOperand = addDep(node->getRight(), nullptr, false);
-
-			// Add value on which the primaryOperand depends
-			addDep(node->getLeft(), primaryOperand, false);
-		}
-		else
+		auto opCode = node->getOpcode();
+		if ( opCode == Instruction::Store )
 		{
 			// Add primaryOperand
 			DAGNode *nodeSelector = node->getRight();
-			bool isOperator = false;
-			DepNode* primaryOperand = addDep(nodeSelector, nullptr, isOperator);
+			const bool isOperator = true;
+			DepNode* primaryOperand = addDep(nodeSelector, nullptr, !isOperator);
 
-			// Add operator
-			nodeSelector = node->getLeft();
-			DepNode* depOperator = addDep(nodeSelector, primaryOperand, true);
+			// Add the list of ops on which the primary operator depends
+			addDepWrapper(node->getLeft(), primaryOperand);
+		}
+		/// Are functions void??
+		// if ( opCode == Instruction::Ret )
+		// {
+		// 	while ( !node->isValueOnlyNode() )
+		// 		node = node->getLeft();
+		// }
+	}
 
-			// Add operands on which the primaryOperand depends
-			addDep(nodeSelector->getLeft(), depOperator, isOperator);
-			addDep(nodeSelector->getRight(), depOperator, isOperator);
+	void addDepWrapper(DAGNode *node, DepNode* primaryOperand)
+	{
+		const bool isOperator = true;
+		if ( node->isValueOnlyNode() )
+		{
+			/// Base case
+			addDep(node, primaryOperand, !isOperator);
+		}
+		else if ( node->getOpcode() == Instruction::Load )
+		{
+			/// Collect Value of the load (node->right == nullptr)
+			addDepWrapper(node->getLeft(), primaryOperand);
+		}
+		else
+		{
+			/// Binary operator case
+			// add operator
+			DepNode* Operator = addDep(node, primaryOperand, isOperator);
+
+			addDepWrapper(node->getLeft(), Operator);
+			addDepWrapper(node->getRight(), Operator);
 		}
 	}
 
-	DepNode* addDep(DAGNode *node, DepNode* parentNode,  bool isOperator)
+	DepNode* addDep(DAGNode *node, DepNode* parentNode, bool isOperator)
 	{
 		DepNode *op;
 		std::string name, opcodeName;
+		// outs() << "Name = " << node->getName();
+		// outs() << " (ID: " << node->getID() << ")\n";
 		opcodeName = node->getOpcodeName();
 
+		/// If node is an operator collect the name, otherwise find the value node
 		if (isOperator)
 			name = node->getName();
 		else
-			name = findValueName(node);
+			name = findValueNode(node);
 
+		/// Check whether that op is already present as a dependency
 		if ( isNamePresentDep(name) )
 			op = DependenceVertices[depKeyByName[name]];
 		else
@@ -279,7 +301,7 @@ private:
 		return op; // adding a member
 	}
 
-	std::string findValueName(DAGNode *operatorNode)
+	std::string findValueNode(DAGNode *operatorNode)
 	{
 		DAGNode *node = operatorNode;
 		while ( !node->isValueOnlyNode() )
@@ -332,7 +354,11 @@ private:
 				ops = selector->getOps();
 				for (auto iter=ops.begin(); iter!=ops.end(); ++iter)
 				{
-					wavefront.push(iter->second);
+					if ( iter->second->hasNotBeenVisited() )
+					{
+						wavefront.push(iter->second);
+						iter->second->markAsVisited();
+					}
 				}
 			}
 		}
