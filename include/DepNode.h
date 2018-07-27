@@ -19,19 +19,26 @@ private:
 	std::string opcodeName;
 	DepNodeList Ops;
 	bool isDependent;
-	// DepNameList opsKeyByName;
+	bool visited;
 
 public:
-	DepNode() : opCount(0), isOperator(false), isDependent(false) {}
+	DepNode() : opCount(0), isOperator(false), isDependent(false), visited(false) {}
 	DepNode(std::string name, int id, std::string opcodeName, bool isOperator) : 
 		name(name), ID(id), opCount(0), isOperator(isOperator), 
-		opcodeName(opcodeName), isDependent(false) {}
+		opcodeName(opcodeName), isDependent(false), visited(false) {}
 	~DepNode() 
 	{
 		for (auto iter=Ops.begin(); iter!=Ops.end(); ++iter)
 			delete iter->second;
 	}
 
+	bool hasNotBeenVisited() 
+	{
+		if ( visited == false )
+			return true;
+		else
+			return false; 
+	}
 	bool isAnOperator() { return isOperator; }
 	bool hasDependents() { return !Ops.empty(); }
 	bool isADependent() { return isDependent; }
@@ -41,6 +48,7 @@ public:
 	DepNodeList getOps() { return Ops; }
 
 	void setID(int id) { ID = id; }
+	void markAsVisited() { visited = true; }
 	void setAsDependent() { isDependent = true; }
 
 	void addOp(DepNode *opNode, int id) 
