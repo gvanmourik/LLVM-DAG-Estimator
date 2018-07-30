@@ -1,5 +1,5 @@
-#ifndef MODULE_INFO_PASS_H
-#define MODULE_INFO_PASS_H
+#ifndef FUNCTION_INFO_PASS_H
+#define FUNCTION_INFO_PASS_H
 
 #include <unordered_map>
 #include <llvm/IR/Function.h>
@@ -7,95 +7,84 @@
 #include <llvm/Support/raw_ostream.h>
 
 #include "AnalysisInfo.h"
-#include "FunctionInfoPass.h"
+#include "LoopInfoAnalysisPass.h"
 #include "DAGBuilder.h"
 
 using namespace llvm;
 
 
 /// New PassManager pass
-class ModuleInfoPass : public AnalysisInfoMixin<ModuleInfoPass>
+class FunctionInfoPass : public AnalysisInfoMixin<FunctionInfoPass>
 {
-	friend AnalysisInfoMixin<ModuleInfoPass>;
+	friend AnalysisInfoMixin<FunctionInfoPass>;
 	static AnalysisKey Key;
 
 public:
-	using Result = ModuleAnalysisInfo;
+	using Result = FunctionAnalysisInfo;
 
-	explicit ModuleInfoPass(FunctionAnalysisManager &FAM) : FAM(&FAM) {}
+	// explicit FunctionInfoPass(FunctionAnalysisManager &FAM) : FAM(&FAM) {}
 
-	ModuleAnalysisInfo run(Module &module, ModuleAnalysisManager &MAM)
+	FunctionAnalysisInfo run(Function &function, FunctionAnalysisManager &FAM)
 	{
-		ModuleAnalysisInfo analysis(&module);
-		analysis.FunctionAnalyses.clear();
-		gatherAnalysis(module, analysis, MAM);
+		FunctionAnalysisInfo analysis(&function);
+		gatherAnalysis(function, analysis, FAM);
 		return analysis;
 	}
 
 	/// Helper function
-	void gatherAnalysis(Module &module, ModuleAnalysisInfo &analysis, ModuleAnalysisManager &MAM)
+	void gatherAnalysis(Function &function, FunctionAnalysisInfo &analysis, FunctionAnalysisManager &FAM)
 	{
-
-		/// iterate through each function
-				// collect loop information (LoopInfoAnalysisPass)
-			/// iterate through each block
-			/// iterate through each instruction
-				// build dag for entire function
-				// build variable graph for function
-			/// MERGE loop and function analysis
+		/// For a function
+			// collect loop information (LoopInfoAnalysisPass)
+		/// iterate through each block
+		/// iterate through each instruction
+			// build dag for entire function
+			// build variable graph for function
+		/// MERGE loop and function analysis (see if necessary)
 
 
 		DAGBuilder *builder = new DAGBuilder();
 		builder->init();
+		auto &LA = FAM.getResult<LoopInfoAnalysisPass>(function);
+		analysis.LoopAnalysis = LA;
 
-		for (auto fncIter=module.begin(); fncIter!=module.end(); ++fncIter)
+		for (auto blockIter=function.begin(); blockIter!=function.end(); ++blockIter)
 		{
-			Function *function = &*fncIter;
-			auto &FA = FAM->getResult<FunctionInfoPass>(*function);
-			analysis.FunctionAnalyses[function] = &FA;
+			BasicBlock *BB = &*blockIter;
 
-			for (auto blockIter=function->begin(); blockIter!=function->end(); ++blockIter)
+			for (auto instIter=BB->begin(); instIter!=BB->end(); ++instIter)
 			{
-				BasicBlock *BB = &*blockIter;
+				Instruction *inst = &*instIter;
+				builder->add(inst);
 
-				for (auto instIter=BB->begin(); instIter!=BB->end(); ++instIter)
-				{
-					Instruction *inst = &*instIter;
-					builder->add(inst);
-
-					switch ( inst->getOpcode() ) {
-					case (Instruction::Load):
-						analysis.readCount++;
-						break;
-					case (Instruction::Store):
-						analysis.writeCount++;
-						break;
-					default:
-						break;
-					}
-
-					analysis.instCount++;
+				switch ( inst->getOpcode() ) {
+				case (Instruction::Load):
+					analysis.readCount++;
+					break;
+				case (Instruction::Store):
+					analysis.writeCount++;
+					break;
+				default:
+					break;
 				}
-				analysis.bbCount++;
+
+				analysis.instCount++;
 			}
+			analysis.bbCount++;
 		}
 
 		builder->lock();
 		builder->fini();
-		outs() << "ModuleInfoPass...\n";
-		// builder->print();
+		outs() << "FunctionInfoPass...\n";
 		// builder->printDependencyGraph();
+		// builder->print();
 		analysis.width = builder->getVarWidth();
 		analysis.depth = builder->getVarDepth();
-	
+
 	}
 
-private:
-	FunctionAnalysisManager *FAM;
-
-
 };
-AnalysisKey ModuleInfoPass::Key;
+AnalysisKey FunctionInfoPass::Key;
 
 /// Legacy/old PassManager pass
 // class ModuleInfoWrapperPass : public ModulePass 
@@ -184,4 +173,4 @@ AnalysisKey ModuleInfoPass::Key;
 // }
 
 
-#endif /* MODULE_INFO_PASS_H */
+#endif /* FUNCTION_INFO_PASS_H */
