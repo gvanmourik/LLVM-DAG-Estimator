@@ -219,7 +219,7 @@ private:
 		if ( node != nullptr )
 		{	
 			auto opCode = node->getOpcode();
-			if ( opCode == Instruction::Store || opCode == Instruction::Ret )
+			if ( opCode == Instruction::Store /*|| opCode == Instruction::Ret*/ )
 			{
 				// outs() << "building dependence unit... (" << node->getName() <<  ")\n";
 				buildDependenceUnit(node);
@@ -333,6 +333,9 @@ private:
 	{
 		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
 		DepNode *root = findDepRoot();
+		if ( root == nullptr )
+			return 0;
+
 		std::queue<DepNode*> wavefront;
 		wavefront.push(root);
 
@@ -369,6 +372,9 @@ private:
 	{
 		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
 		DepNode *root = findDepRoot();
+		if ( root == nullptr )
+			return 0;
+
 		int maxDepth = 0;
 		int depthCount = 1;
 		depthWrapper(root, depthCount, maxDepth);
