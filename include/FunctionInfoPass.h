@@ -3,7 +3,6 @@
 
 #include <unordered_map>
 #include <llvm/IR/Function.h>
-#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Support/raw_ostream.h>
 
 #include "AnalysisInfo.h"
@@ -45,8 +44,8 @@ public:
 
 		DAGBuilder *builder = new DAGBuilder();
 		builder->init();
-		auto &LA = FAM.getResult<LoopInfoAnalysisPass>(function);
-		analysis.LoopAnalysis = LA;
+		// auto &LA = FAM.getResult<LoopInfoAnalysisPass>(function);
+		// analysis.LoopAnalysis = LA;
 
 		for (auto blockIter=function.begin(); blockIter!=function.end(); ++blockIter)
 		{
@@ -55,20 +54,28 @@ public:
 			for (auto instIter=BB->begin(); instIter!=BB->end(); ++instIter)
 			{
 				Instruction *inst = &*instIter;
+				analysis.instCount++;
+				auto opCode = inst->getOpcode();
 				builder->add(inst);
 
-				switch ( inst->getOpcode() ) {
-				case (Instruction::Load):
-					analysis.readCount++;
-					break;
-				case (Instruction::Store):
-					analysis.writeCount++;
-					break;
-				default:
-					break;
+				if ( opCode == Instruction::Call )
+				{
+					Function *callee = cast<CallInst>(inst)->getCalledFunction();
+					auto &FA = FAM.getResult<FunctionInfoPass>(*callee);
+					analysis.InnerFA[callee] = &FA;
+					continue;
 				}
 
-				analysis.instCount++;
+				switch ( opCode ) {
+					case (Instruction::Load):
+						analysis.readCount++;
+						break;
+					case (Instruction::Store):
+						analysis.writeCount++;
+						break;
+					default:
+						break;
+				}
 			}
 			analysis.bbCount++;
 		}
@@ -76,7 +83,7 @@ public:
 		builder->lock();
 		builder->fini();
 		outs() << "FunctionInfoPass...\n";
-		// builder->printDependencyGraph();
+		builder->printDependencyGraph();
 		// builder->print();
 		analysis.width = builder->getVarWidth();
 		analysis.depth = builder->getVarDepth();

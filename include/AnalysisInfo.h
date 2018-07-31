@@ -1,8 +1,6 @@
 #ifndef ANALYSIS_INFO_H
 #define ANALYSIS_INFO_H
 
-#include <llvm/Analysis/LoopInfo.h>
-
 using namespace llvm;
 
 class LoopInfoAnalysis;
@@ -46,8 +44,6 @@ class BaseAnalysisInfo
 
 			return *this;
 		}
-
-
 };
 
 
@@ -84,7 +80,8 @@ class FunctionAnalysisInfo : public BaseAnalysisInfo
 		Function *function;
 
 	public:
-		LoopAnalysis_t LoopAnalysis;
+		// LoopAnalysis_t LoopAnalysis;
+		FunctionAnalysis_t InnerFA;
 
 		FunctionAnalysisInfo() {}
 		FunctionAnalysisInfo(Function *function) : function(function) {}
@@ -95,18 +92,21 @@ class FunctionAnalysisInfo : public BaseAnalysisInfo
 			outs() << "\tFunction: " << function->getName() << "()\n";
 			BaseAnalysisInfo::printAnalysis();
 
-			outs() << "----------------------------------------\n";
-			outs() << "Loop: (FunctionAnalysisInfo)\n";
-			for (auto i=LoopAnalysis.begin(); i != LoopAnalysis.end(); ++i)
+			if ( !InnerFA.empty() )
 			{
-				i->second->printAnalysis();
+				outs() << "----------------------------------------\n";
+				outs() << "\tInnerFA: (FunctionAnalysisInfo)\n";
+				for (auto i=InnerFA.begin(); i != InnerFA.end(); ++i)
+				{
+					i->second->printAnalysis();
+				}
 			}
 			outs() << "----------------------------------------\n";
 		}
 
 		FunctionAnalysisInfo& operator=(const FunctionAnalysisInfo &FA) 
 		{ 
-			LoopAnalysis = FA.LoopAnalysis;
+			InnerFA.insert( FA.InnerFA.begin(), FA.InnerFA.end() );
 
 			return *this;
 		}

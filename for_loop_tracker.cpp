@@ -38,8 +38,8 @@
 #include <iostream>
 
 /// Custom analysis passes
-#include "ModuleInfoPass.h"
-// #include "FunctionInfoPass.h"
+// #include "ModuleInfoPass.h"
+#include "FunctionInfoPass.h"
 
 
 using namespace llvm;
@@ -48,15 +48,14 @@ using namespace llvm;
 Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
 PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString);
 ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module);
-template<class AnalysisT>
-void print(AnalysisT &analysis);
 static TargetMachine *buildTargetMachine();
 #ifdef GEN_CFG
 	void generateCFG(Function *targetFnc, std::string cfg_title, PassBuilder &passBuilder, bool debug);
 #endif
 
 // TEST
-Function* generateTest(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
+Function* generateTest1(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
+Function* generateTest2(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters, Function *callee);
 
 
 int main(int argc, char* argv[])
@@ -94,8 +93,9 @@ int main(int argc, char* argv[])
 	/// Returned IR function
 	// static Function *ForLoopFnc = generateForLoop( context, builder, module, N );
 	// static Function *TestFnc = generateTest( context, builder, module, N );
-	generateForLoop(context, builder, module, N);
-	generateTest(context, builder, module, N);
+	// generateForLoop(context, builder, module, N);
+	static Function *callee = generateTest1(context, builder, module, N);
+	static Function *caller = generateTest2(context, builder, module, N, callee);
 
 	/// CFG Before
 	#ifdef GEN_CFG
@@ -138,9 +138,9 @@ int main(int argc, char* argv[])
 	/// Custom analysis passes
 	FAM->registerPass([&]{ return LoopInfoAnalysisPass(); });
 	FAM->registerPass([&]{ return FunctionInfoPass(); });
-	MAM->registerPass([&]{ return ModuleInfoPass(*FAM); });
+	// MAM->registerPass([&]{ return ModuleInfoPass(*FAM); });
 
-	passBuilder.registerModuleAnalyses(*MAM);
+	// passBuilder.registerModuleAnalyses(*MAM);
 	passBuilder.registerFunctionAnalyses(*FAM);
 	passBuilder.registerLoopAnalyses(*LAM);
 	/// Collect and print result
@@ -163,9 +163,12 @@ int main(int argc, char* argv[])
 	// GenericValue value = engine->runFunction(ForLoopFnc, Args);
 
 
-	// outs() << *module;
-	auto &result = MAM->getResult<ModuleInfoPass>(*module);
-	print<ModuleAnalysisInfo>(result);
+	// outs() << *caller;
+	auto &result = FAM->getResult<FunctionInfoPass>(*caller);
+	outs() << "----------------------------------------\n";
+	result.printAnalysis();
+	// auto &result = MAM->getResult<ModuleInfoPass>(*module);
+	// print<ModuleAnalysisInfo>(result);
 
 
 	// outs() << "TestFnc() return value = " << value.IntVal << "\n";
@@ -262,10 +265,10 @@ Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* mo
 	return ForLoopFnc;
 }
 
-Function* generateTest(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters)
+Function* generateTest1(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters)
 {
 	Function *TestFnc = 
-		cast<Function>( module->getOrInsertFunction("TestFnc", Type::getInt32Ty(context)) );
+		cast<Function>( module->getOrInsertFunction("Callee", Type::getVoidTy(context)) );
 
 	Value* N = ConstantInt::get(builder.getInt32Ty(), iters);
 	Value* zero = ConstantInt::get(builder.getInt32Ty(), 0);
@@ -288,18 +291,13 @@ Function* generateTest(LLVMContext &context, IRBuilder<> &builder, Module* modul
 	/// EntryBB
 	builder.SetInsertPoint(EntryBB);
 	a = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "a");
-	// b = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "b");
 	c = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "c");
 	d = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "d");
-	// e = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "e");
 	f = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "f");
 	x = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "x");
 	y = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "y");
 	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
 	builder.CreateStore(two, a);
-	// builder.CreateStore(two, b);
-	// builder.CreateStore(three, d);
-	// builder.CreateStore(two, e);
 	builder.CreateStore(two, x);
 	builder.CreateStore(three, y);
 	builder.CreateStore(zero, i);
@@ -313,12 +311,6 @@ Function* generateTest(LLVMContext &context, IRBuilder<> &builder, Module* modul
 
 	/// ForBodyBB
 	builder.SetInsertPoint(ForBodyBB);
-	// a = b + e
-	// bVal = builder.CreateLoad(b, "bVal");
-	// eVal = builder.CreateLoad(e, "eVal");
-	// aVal = builder.CreateAdd(bVal, eVal, "b+e");
-	// builder.CreateStore(aVal, a);
-	// d = x * y + a + 3<-- increase the width
 	xVal = builder.CreateLoad(x, "xVal");
 	yVal = builder.CreateLoad(y, "yVal");
 	aVal = builder.CreateLoad(a, "aVal");
@@ -349,13 +341,66 @@ Function* generateTest(LLVMContext &context, IRBuilder<> &builder, Module* modul
 
 	/// ExitBB
 	builder.SetInsertPoint(ExitBB);
-	Value *returnValue = builder.CreateLoad(c, "returnValueC");
-	ReturnInst::Create(context, returnValue, ExitBB);
+	ReturnInst::Create(context, ExitBB);
 
 
 	return TestFnc;
 }
 
+Function* generateTest2(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters, Function *callee)
+{
+	Function *TestFnc = 
+		cast<Function>( module->getOrInsertFunction("Caller", Type::getVoidTy(context)) );
+
+	Value* N = ConstantInt::get(builder.getInt32Ty(), iters);
+	Value* zero = ConstantInt::get(builder.getInt32Ty(), 0);
+	Value* one = ConstantInt::get(builder.getInt32Ty(), 1);
+
+	/// BBs Outline
+	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", TestFnc);
+	BasicBlock *ForEntryBB = BasicBlock::Create(context, "forEntry", TestFnc);
+	BasicBlock *ForBodyBB = BasicBlock::Create(context, "forBody", TestFnc);
+	BasicBlock *ForIncBB = BasicBlock::Create(context, "forInc", TestFnc);
+	BasicBlock *ForExitBB = BasicBlock::Create(context, "forExit", TestFnc);
+	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", TestFnc);
+	
+	/// Variables
+	Value *if_i_LT_N, *i, *iVal;
+
+	/// EntryBB
+	builder.SetInsertPoint(EntryBB);
+	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
+	builder.CreateStore(zero, i);
+	builder.CreateBr(ForEntryBB);
+
+	/// ForEntryBB
+	builder.SetInsertPoint(ForEntryBB);
+	iVal = builder.CreateLoad(i, "iVal");
+	if_i_LT_N = builder.CreateICmpULT(iVal, N, "if_i_LT_N");
+	builder.CreateCondBr(if_i_LT_N, ForBodyBB, ForExitBB);
+
+	/// ForBodyBB
+	builder.SetInsertPoint(ForBodyBB);
+	builder.CreateCall(callee);
+	builder.CreateBr(ForIncBB);
+
+	/// ForIncBB
+	builder.SetInsertPoint(ForIncBB);
+	iVal = builder.CreateAdd(iVal, one, "i++");
+	builder.CreateStore(iVal, i);
+	builder.CreateBr(ForEntryBB);
+	
+	/// ForExitBB
+	builder.SetInsertPoint(ForExitBB);
+	builder.CreateBr(ExitBB);
+
+	/// ExitBB
+	builder.SetInsertPoint(ExitBB);
+	ReturnInst::Create(context, ExitBB);
+
+
+	return TestFnc;
+}
 
 PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString)
 {
@@ -393,14 +438,6 @@ ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module)
 		return nullptr;
 	}
 	return engine;
-}
-
-template<class AnalysisT>
-void print(AnalysisT &analysis)
-{
-	outs() << "----------------------------------------\n";
-	analysis.printAnalysis();
-	outs() << "----------------------------------------\n";
 }
 
 static TargetMachine *buildTargetMachine()
