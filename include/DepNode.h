@@ -41,10 +41,7 @@ public:
 	}
 	bool isAnOperator() { return isOperator; }
 	bool hasDependents() { 
-		if ( opCount == 0 )
-			return false;
-		else
-			return true;
+		return !Ops.empty();
 	}
 	bool isADependent() { return isDependent; }
 	std::string getName() { return name; }

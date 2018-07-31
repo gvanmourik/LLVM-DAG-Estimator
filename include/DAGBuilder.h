@@ -1,41 +1,50 @@
 #ifndef DAG_BUILDER_H
 #define DAG_BUILDER_H
 
-#include <queue>
+#include "VDG.h"
 #include "DAGNode.h"
 #include "DepNode.h"
 
 
-class DAGBuilder {
-
+class DAGBuilder 
+{
 private:
+	VariableDependencyGraph VDG;
 	DAGVertexList DAGVertices;
-	DepVertexList DependenceVertices;
 	DAGNameList keyByName;
-	DepNameList depKeyByName;
 	int ID;
 	int NameCount;
-	int DepID; // for dependence graph
 	bool hasBeenInitialized;
 	bool DAGIsLocked;
 
 
 public:
-	DAGBuilder() : ID(0), NameCount(-1), DepID(0), hasBeenInitialized(false) {}
+	DAGBuilder() : ID(0), NameCount(-1), hasBeenInitialized(false) {}
 	~DAGBuilder() {}
 
 	void lock() { DAGIsLocked = true; }
 
-	//collectAdjNodes() and createDependenceVertices() must be called first
-	int getVarWidth() { return variableWidth(); }
-	int getVarDepth() { return variableDepth(); }
+	//collectAdjNodes() and createDependenceGraph() must be called first
+	int getVarWidth() 
+	{ 
+		VDG.lock();
+		int width = VDG.getWidth();
+		VDG.unlock();
+		return width; 
+	}
+	int getVarDepth() 
+	{ 
+		VDG.lock();
+		int depth = VDG.getDepth();
+		VDG.unlock();
+		return depth;
+	}
 
 	void init()
 	{
+		VDG.clear();
 		DAGVertices.clear();
-		DependenceVertices.clear();
 		keyByName.clear();
-		depKeyByName.clear();
 		DAGIsLocked = false;
 		hasBeenInitialized = true;
 	}
@@ -289,8 +298,8 @@ private:
 			name = findValueNode(node);
 
 		/// Check whether that op is already present as a dependency
-		if ( isNamePresentDep(name) )
-			op = DependenceVertices[depKeyByName[name]];
+		if ( VDG.isNamePresentDep(name) )
+			op = VDG.getDepNodeByName(name);
 		else
 			op = newDepNode(name, opcodeName, isOperator);
 
@@ -311,103 +320,11 @@ private:
 		return node->getName();
 	}
 
-	bool isNamePresentDep(std::string name)
-	{
-		if( depKeyByName.count(name) == 0 )
-			return false;
-		else
-			return true;
-	}
-
 	DepNode* newDepNode(std::string name, std::string opcodeName, bool isOperator)
 	{
-		DepNode* node = new DepNode(name, DepID, opcodeName, isOperator);
-		DependenceVertices[DepID] = node;
-		depKeyByName[name] = DepID;
-		DepID++;
+		DepNode* node = new DepNode(name, VDG.getDepID(), opcodeName, isOperator);
+		VDG.setDepNode(node, name);
 		return node;
-	}
-
-	/// TRAVERSAL
-	int variableWidth()
-	{
-		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
-		DepNode *root = findDepRoot();
-		if ( root == nullptr )
-			return 0;
-
-		std::queue<DepNode*> wavefront;
-		wavefront.push(root);
-
-		int maxWidth = 1; // to avoid 1st assignment in while
-		int width = 0;
-		DepNode *selector;
-		DepNodeList ops;
-		while ( !wavefront.empty() )
-		{
-			width = wavefront.size();
-			if ( maxWidth < width )
-				maxWidth = width;
-
-			selector = wavefront.front();
-			wavefront.pop();
-
-			if ( selector->hasDependents() )
-			{
-				ops = selector->getOps();
-				for (auto iter=ops.begin(); iter!=ops.end(); ++iter)
-				{
-					if ( iter->second->hasNotBeenVisited() )
-					{
-						wavefront.push(iter->second);
-						iter->second->markAsVisited();
-					}
-				}
-			}
-		}
-		return maxWidth;
-	}
-
-	int variableDepth()
-	{
-		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
-		DepNode *root = findDepRoot();
-		if ( root == nullptr )
-			return 0;
-
-		int maxDepth = 0;
-		int depthCount = 1;
-		depthWrapper(root, depthCount, maxDepth);
-
-		return maxDepth;
-	}
-
-	void depthWrapper(DepNode *node, int count, int &maxCount)
-	{
-		auto Ops = node->getOps();
-		if ( !node->isAnOperator() )
-			count++;
-
-		for (auto iter=Ops.begin(); iter!=Ops.end(); ++iter)
-		{
-			if ( maxCount < count )
-			{
-				maxCount = count;
-			}
-			depthWrapper(iter->second, count, maxCount);
-		}
-	}
-
-	DepNode* findDepRoot()
-	{
-		DepNode *currentNode;
-		for (int i = 0; i < DepID; ++i)
-		{
-			currentNode = DependenceVertices[i];
-			if ( currentNode->hasDependents() && !currentNode->isADependent() )
-				return currentNode;
-		}
-		return nullptr;
 	}
 
 public:
@@ -417,6 +334,7 @@ public:
 		collectAdjNodes();
 		// outs() << "Configuring dependence graph...\n";
 		createDependenceGraph();
+		// VDG.lock();
 		// outs() << "Done...use print() and printDependencyGraph() to view.\n";
 
 		// print();
@@ -444,15 +362,9 @@ public:
 	void printDependencyGraph()
 	{
 		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
-		outs() << "\nDependency Nodes:\n";
-		for (int i = 0; i < DepID; ++i)
-		{
-			outs() << "---------------------------------------------------\n";
-			outs() << "DepNode" << i << ":\n";
-			DependenceVertices[i]->print();
-			outs() << "---------------------------------------------------\n";
-		}
-		outs() << "\n";
+		VDG.lock();
+		VDG.print();
+		VDG.unlock();
 	}
 	
 
