@@ -47,67 +47,91 @@ class BaseAnalysisInfo
 };
 
 
-class LoopInfoAnalysis : public BaseAnalysisInfo 
-{
-	private:
-		Loop *L;
-
-	public:
-		std::string functionName;
-
-		LoopInfoAnalysis(): L(nullptr) {}
-		LoopInfoAnalysis(Loop *targetLoop): L(targetLoop) {}
-		~LoopInfoAnalysis(){}
-
-		Loop* getLoop(){ return L; }
-
-		void setLoop(Loop *newLoop) { L=newLoop; }
-		void setFunctionName(std::string name) { functionName = name; }
-
-		void printAnalysis()
-		{
-			outs() << "\tFunction: " << functionName << "()\n";
-			outs() << "\t---> Loop Depth " << L->getLoopDepth() << " <---\n";
-			BaseAnalysisInfo::printAnalysis();
-		}
-
-};
-
-
 class FunctionAnalysisInfo : public BaseAnalysisInfo
 {
+	friend LoopInfoAnalysis;
+
 	private:
 		Function *function;
 
 	public:
-		// LoopAnalysis_t LoopAnalysis;
 		FunctionAnalysis_t InnerFA;
 
-		FunctionAnalysisInfo() {}
+		FunctionAnalysisInfo() : function(nullptr) {}
 		FunctionAnalysisInfo(Function *function) : function(function) {}
 		~FunctionAnalysisInfo(){}
 
 		void printAnalysis()
 		{
-			outs() << "\tFunction: " << function->getName() << "()\n";
+			if (function!=nullptr)
+				outs() << "\t     Function = " << function->getName() << "()\n";
 			BaseAnalysisInfo::printAnalysis();
 
 			if ( !InnerFA.empty() )
 			{
-				outs() << "----------------------------------------\n";
+				outs() << "\t----------------------------------------\n";
 				outs() << "\tInnerFA: (FunctionAnalysisInfo)\n";
 				for (auto i=InnerFA.begin(); i != InnerFA.end(); ++i)
 				{
+					i->second->printAnalysis();
+				}
+				outs() << "\t----------------------------------------\n";
+			}
+		}
+
+		FunctionAnalysisInfo& operator=(const FunctionAnalysisInfo &FA) 
+		{ 
+			InnerFA.insert( FA.InnerFA.begin(), FA.InnerFA.end() );
+			return *this;
+		}
+
+};
+
+
+class LoopInfoAnalysis : public FunctionAnalysisInfo 
+{
+	private:
+		Loop *L;
+
+	public:
+		FunctionAnalysisInfo *ParentFA;
+		LoopAnalysis_t SubLoops;
+
+		LoopInfoAnalysis(): L(nullptr) {}
+		LoopInfoAnalysis(Loop *targetLoop): L(targetLoop) {}
+		LoopInfoAnalysis(Loop *targetLoop, Function *fnc): L(targetLoop) { function = fnc; }
+		~LoopInfoAnalysis(){}
+
+		Loop* getLoop(){ return L; }
+
+		void setLoop(Loop *newLoop) { L=newLoop; }
+
+		void printAnalysis()
+		{
+			outs() << "----------------------------------------\n";
+			outs() << "\t----------------------------------------\n";
+			if (L!=nullptr)
+			{
+				outs() << "\t   Loop Depth = " << L->getLoopDepth() << "\n";
+			}
+
+			ParentFA->printAnalysis();
+
+			if ( !SubLoops.empty() )
+			{
+				outs() << "\tSubLoops:\n";
+				for (auto i=SubLoops.begin(); i != SubLoops.end(); ++i)
+				{
+					outs() << "\t     Function = " << function->getName() << "()\n";
 					i->second->printAnalysis();
 				}
 			}
 			outs() << "----------------------------------------\n";
 		}
 
-		FunctionAnalysisInfo& operator=(const FunctionAnalysisInfo &FA) 
+		LoopInfoAnalysis& operator=(const LoopInfoAnalysis &FA) 
 		{ 
-			InnerFA.insert( FA.InnerFA.begin(), FA.InnerFA.end() );
-
+			SubLoops.insert( FA.SubLoops.begin(), FA.SubLoops.end() );
 			return *this;
 		}
 

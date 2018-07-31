@@ -39,6 +39,7 @@
 
 /// Custom analysis passes
 // #include "ModuleInfoPass.h"
+#include "LoopInfoAnalysisPass.h"
 #include "FunctionInfoPass.h"
 
 
@@ -164,9 +165,8 @@ int main(int argc, char* argv[])
 
 
 	// outs() << *caller;
-	auto &result = FAM->getResult<FunctionInfoPass>(*caller);
-	outs() << "----------------------------------------\n";
-	result.printAnalysis();
+	auto &FA2 = FAM->getResult<FunctionInfoPass>(*caller);
+	FA2.printAnalysis();
 	// auto &result = MAM->getResult<ModuleInfoPass>(*module);
 	// print<ModuleAnalysisInfo>(result);
 

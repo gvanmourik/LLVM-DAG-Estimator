@@ -6,7 +6,6 @@
 #include <llvm/Support/raw_ostream.h>
 
 #include "AnalysisInfo.h"
-#include "LoopInfoAnalysisPass.h"
 #include "DAGBuilder.h"
 
 using namespace llvm;
@@ -33,19 +32,8 @@ public:
 	/// Helper function
 	void gatherAnalysis(Function &function, FunctionAnalysisInfo &analysis, FunctionAnalysisManager &FAM)
 	{
-		/// For a function
-			// collect loop information (LoopInfoAnalysisPass)
-		/// iterate through each block
-		/// iterate through each instruction
-			// build dag for entire function
-			// build variable graph for function
-		/// MERGE loop and function analysis (see if necessary)
-
-
 		DAGBuilder *builder = new DAGBuilder();
 		builder->init();
-		// auto &LA = FAM.getResult<LoopInfoAnalysisPass>(function);
-		// analysis.LoopAnalysis = LA;
 
 		for (auto blockIter=function.begin(); blockIter!=function.end(); ++blockIter)
 		{
@@ -82,8 +70,8 @@ public:
 
 		builder->lock();
 		builder->fini();
-		outs() << "FunctionInfoPass...\n";
-		builder->printDependencyGraph();
+		// outs() << "FunctionInfoPass...\n";
+		// builder->printDependencyGraph();
 		// builder->print();
 		analysis.width = builder->getVarWidth();
 		analysis.depth = builder->getVarDepth();

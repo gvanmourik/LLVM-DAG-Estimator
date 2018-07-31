@@ -1,13 +1,8 @@
 #ifndef LOOP_INFO_ANALYSIS_PASS_H
 #define LOOP_INFO_ANALYSIS_PASS_H
 
-#include <unordered_map>
-#include <llvm/IR/Function.h>
 #include <llvm/Analysis/LoopInfo.h>
-#include <llvm/Support/raw_ostream.h>
-
-#include "AnalysisInfo.h"
-#include "DAGBuilder.h"
+#include "FunctionInfoPass.h"
 
 using namespace llvm;
 
@@ -22,7 +17,6 @@ public:
 
 	LoopAnalysis_t run(Function &function, FunctionAnalysisManager &FAM)
 	{
-		analysis.clear();
 		gatherAnalysis(function, analysis, FAM);
 		return analysis;
 	}
@@ -30,25 +24,20 @@ public:
 	/// Helper function
 	void gatherAnalysis(Function &function, LoopAnalysis_t &analysis, FunctionAnalysisManager &FAM)
 	{
-		// outs() << "----------------------------------------\n";
-		// outs() << "Loop Analysis Results (custom pass):\n";
-		// outs() << "\tFunction = " << function.getName() << "()" << "\n";
-		std::string fncName = function.getName();
-
+		auto &FA = FAM.getResult<FunctionInfoPass>(function);
 		LoopInfo &LI = FAM.getResult<LoopAnalysis>(function);
 
 		/// Use LoopInfo to iterate over each loop and sub-loop
 		for (LoopInfo::iterator iterL=LI.begin(), endLI=LI.end(); iterL != endLI; ++iterL)
 		{
-			analysis[*iterL] = new LoopInfoAnalysis(*iterL);
-			analysis[*iterL]->setFunctionName(fncName);
-			emitLoopInfo(*iterL, analysis);
+			analysis[*iterL] = new LoopInfoAnalysis(*iterL, &function);
+			analysis[*iterL]->ParentFA = &FA;
+			emitLoopInfo(analysis[*iterL], FAM, *iterL);
 		}
-		// outs() << "----------------------------------------\n";
 	}
 
 	/// Supports nested loops
-	void emitLoopInfo(Loop *L, LoopAnalysis_t &analysis)
+	void emitLoopInfo(LoopInfoAnalysis *currentAnalysis, FunctionAnalysisManager &FAM, Loop *L)
 	{
 		DAGBuilder *builder = new DAGBuilder();
 		builder->init();
@@ -60,38 +49,47 @@ public:
 			for (BasicBlock::iterator iterI = BB->begin(), end = BB->end(); iterI != end; ++iterI)
 			{	
 				Instruction *I = &*iterI;
-
+				currentAnalysis->instCount++;
+				auto opCode = I->getOpcode();
 				builder->add(I);
 
-				switch ( I->getOpcode() ) {
+				if (opCode == Instruction::Call)
+				{
+					Function *callee = cast<CallInst>(I)->getCalledFunction();
+					auto &FA = FAM.getResult<FunctionInfoPass>(*callee);
+					currentAnalysis->InnerFA[callee] = &FA;
+					continue;
+				}
+
+				switch (opCode) {
 					case (Instruction::Load):
-						analysis[L]->readCount++;
+						currentAnalysis->readCount++;
 						break;
 					case (Instruction::Store):
-						analysis[L]->writeCount++;
+						currentAnalysis->writeCount++;
 						break;
 					default:
 						break;
 				}
-				analysis[L]->instCount++;
 			}
-			analysis[L]->bbCount++;
+			currentAnalysis->bbCount++;
 		}
 
 		builder->lock();
 		builder->fini();
 		// outs() << "LoopInfoAnalysisPass...\n";
+		// builder->print();
 		// builder->printDependencyGraph();
-		analysis[L]->width = builder->getVarWidth();
-		analysis[L]->depth = builder->getVarDepth();
+		currentAnalysis->width = builder->getVarWidth();
+		currentAnalysis->depth = builder->getVarDepth();
 
-		// analysis[L]->printAnalysis();
+		// analysis->SubLoops[L]->printAnalysis();
 
 		std::vector<Loop*> subLoops = L->getSubLoops();
 		for (Loop::iterator iterSL=subLoops.begin(), lastSL=subLoops.end(); iterSL != lastSL; ++iterSL)
 		{
-			analysis[*iterSL] = new LoopInfoAnalysis(*iterSL);
-			emitLoopInfo(*iterSL, analysis);
+			currentAnalysis->SubLoops[*iterSL] = new LoopInfoAnalysis(*iterSL);
+			emitLoopInfo(currentAnalysis->SubLoops[*iterSL], FAM, *iterSL);
 		}
 	}
 
@@ -162,20 +160,20 @@ AnalysisKey LoopInfoAnalysisPass::Key;
 // 				Instruction *I = &*iterI;
 // 				switch ( I->getOpcode() ) {
 // 					case (Instruction::Load):
-// 						analysis[L]->readCount++;
+// 						analysis->SubLoops[L]->readCount++;
 // 						break;
 // 					case (Instruction::Store):
-// 						analysis[L]->writeCount++;
+// 						analysis->SubLoops[L]->writeCount++;
 // 						break;
 // 					default:
 // 						break;
 // 				}
-// 				analysis[L]->opCount++;
+// 				analysis->SubLoops[L]->opCount++;
 // 			}
-// 			analysis[L]->bbCount++;
+// 			analysis->SubLoops[L]->bbCount++;
 // 		}
 
-// 		analysis[L]->printAnalysis();
+// 		analysis->SubLoops[L]->printAnalysis();
 
 // 		std::vector<Loop*> subLoops = L->getSubLoops();
 // 		for (Loop::iterator iterSL=subLoops.begin(), lastSL=subLoops.end(); iterSL != lastSL; ++iterSL)

@@ -4,6 +4,8 @@
 #include <map>
 #include <llvm/IR/Instruction.h>
 
+// using namespace llvm;
+
 class DAGNode;
 typedef std::map<int, DAGNode*> DAGNodeList;
 
