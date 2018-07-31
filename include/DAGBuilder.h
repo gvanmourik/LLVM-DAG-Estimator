@@ -23,21 +23,13 @@ public:
 	~DAGBuilder() {}
 
 	void lock() { DAGIsLocked = true; }
-
-	//collectAdjNodes() and createDependenceGraph() must be called first
-	int getVarWidth() 
-	{ 
+	VariableDependencyGraph getVDG() 
+	{
+		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
 		VDG.lock();
-		int width = VDG.getWidth();
+		auto VDG_copy = VDG;
 		VDG.unlock();
-		return width; 
-	}
-	int getVarDepth() 
-	{ 
-		VDG.lock();
-		int depth = VDG.getDepth();
-		VDG.unlock();
-		return depth;
+		return VDG_copy;
 	}
 
 	void init()
