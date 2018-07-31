@@ -1,7 +1,7 @@
 #ifndef DAG_BUILDER_H
 #define DAG_BUILDER_H
 
-#include "VDG.h"
+#include "VDGBuilder.h"
 #include "DAGNode.h"
 #include "DepNode.h"
 
@@ -9,7 +9,7 @@
 class DAGBuilder 
 {
 private:
-	VariableDependencyGraph VDG;
+	VDGBuilder *vdgBuilder;
 	DAGVertexList DAGVertices;
 	DAGNameList keyByName;
 	int ID;
@@ -19,22 +19,18 @@ private:
 
 
 public:
-	DAGBuilder() : ID(0), NameCount(-1), hasBeenInitialized(false) {}
+	DAGBuilder() : vdgBuilder(nullptr), ID(0), NameCount(-1), hasBeenInitialized(false) {}
 	~DAGBuilder() {}
 
 	void lock() { DAGIsLocked = true; }
 	VariableDependencyGraph getVDG() 
-	{
-		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
-		VDG.lock();
-		auto VDG_copy = VDG;
-		VDG.unlock();
-		return VDG_copy;
+	{ 
+		assert( vdgBuilder != nullptr && "VDGBuilder has not been set. Use createDependenceGraph()");
+		return vdgBuilder->getVDG();
 	}
 
 	void init()
 	{
-		VDG.clear();
 		DAGVertices.clear();
 		keyByName.clear();
 		DAGIsLocked = false;
@@ -201,138 +197,17 @@ public:
 		}
 	}
 
-	/// DEPENDENCY GRAPH
-	/**
-	 * @brief      Creates a variable dependency graph from the DAG.
-	 */
-	void createDependenceGraph()
+	void createVDG()
 	{
 		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
-		for (int i = 0; i < ID; ++i)
-		{
-			traverseDAGNode(DAGVertices[i]);
-		}
+		vdgBuilder = new VDGBuilder(DAGVertices, ID);
+		vdgBuilder->createVDG();
 	}
 
-private:
-	void traverseDAGNode(DAGNode *node)
-	{
-		if ( node != nullptr )
-		{	
-			auto opCode = node->getOpcode();
-			if ( opCode == Instruction::Store /*|| opCode == Instruction::Ret*/ )
-			{
-				// outs() << "building dependence unit... (" << node->getName() <<  ")\n";
-				buildDependenceUnit(node);
-			}
-			traverseDAGNode(node->getLeft());
-			traverseDAGNode(node->getRight());
-		} 
-	}
-
-	void buildDependenceUnit(DAGNode *node)
-	{
-		auto opCode = node->getOpcode();
-		if ( opCode == Instruction::Store )
-		{
-			// Add primaryOperand
-			DAGNode *nodeSelector = node->getRight();
-			const bool isOperator = true;
-			DepNode* primaryOperand = addDep(nodeSelector, nullptr, !isOperator);
-
-			// Add the list of ops on which the primary operator depends
-			addDepWrapper(node->getLeft(), primaryOperand);
-		}
-		/// Are functions void??
-		// if ( opCode == Instruction::Ret )
-		// {
-		// 	while ( !node->isValueOnlyNode() )
-		// 		node = node->getLeft();
-		// }
-	}
-
-	void addDepWrapper(DAGNode *node, DepNode* primaryOperand)
-	{
-		const bool isOperator = true;
-		if ( node->isValueOnlyNode() )
-		{
-			/// Base case
-			addDep(node, primaryOperand, !isOperator);
-		}
-		else if ( node->getOpcode() == Instruction::Load )
-		{
-			/// Collect Value of the load (node->right == nullptr)
-			addDepWrapper(node->getLeft(), primaryOperand);
-		}
-		else
-		{
-			/// Binary operator case
-			// add operator
-			DepNode* Operator = addDep(node, primaryOperand, isOperator);
-
-			addDepWrapper(node->getLeft(), Operator);
-			addDepWrapper(node->getRight(), Operator);
-		}
-	}
-
-	DepNode* addDep(DAGNode *node, DepNode* parentNode, bool isOperator)
-	{
-		DepNode *op;
-		std::string name, opcodeName;
-		// outs() << "Name = " << node->getName();
-		// outs() << " (ID: " << node->getID() << ")\n";
-		opcodeName = node->getOpcodeName();
-
-		/// If node is an operator collect the name, otherwise find the value node
-		if (isOperator)
-			name = node->getName();
-		else
-			name = findValueNode(node);
-
-		/// Check whether that op is already present as a dependency
-		if ( VDG.isNamePresentDep(name) )
-			op = VDG.getDepNodeByName(name);
-		else
-			op = newDepNode(name, opcodeName, isOperator);
-
-		if (parentNode == nullptr)
-			return op; // adding a parentNode
-
-		parentNode->addOp(op, op->getID());
-		return op; // adding a member
-	}
-
-	std::string findValueNode(DAGNode *operatorNode)
-	{
-		DAGNode *node = operatorNode;
-		while ( !node->isValueOnlyNode() )
-		{
-			node = node->getLeft();				
-		}
-		return node->getName();
-	}
-
-	DepNode* newDepNode(std::string name, std::string opcodeName, bool isOperator)
-	{
-		DepNode* node = new DepNode(name, VDG.getDepID(), opcodeName, isOperator);
-		VDG.setDepNode(node, name);
-		return node;
-	}
-
-public:
 	void fini()
 	{
-		// outs() << "Finalizing DAG build...\n";
 		collectAdjNodes();
-		// outs() << "Configuring dependence graph...\n";
-		createDependenceGraph();
-		// VDG.lock();
-		// outs() << "Done...use print() and printDependencyGraph() to view.\n";
-
-		// print();
-		// printDependencyGraph();
-		// outs() << "Width = " << variableWidth() << "\n";
-		// outs() << "Depth = " << variableDepth() << "\n";
+		createVDG();
 	}
 
 	void print()
@@ -354,9 +229,7 @@ public:
 	void printDependencyGraph()
 	{
 		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
-		VDG.lock();
-		VDG.print();
-		VDG.unlock();
+		vdgBuilder->printVDG();
 	}
 	
 

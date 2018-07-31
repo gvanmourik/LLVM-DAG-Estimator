@@ -48,8 +48,6 @@ class BaseAnalysisInfo
 
 class FunctionAnalysisInfo : public BaseAnalysisInfo
 {
-	friend LoopInfoAnalysis;
-
 	private:
 		Function *function;
 
