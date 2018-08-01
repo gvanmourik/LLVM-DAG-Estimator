@@ -254,8 +254,14 @@ private:
 	{
 		DepNode *op;
 		std::string name, opcodeName;
-		// outs() << "Name = " << node->getName();
-		// outs() << " (ID: " << node->getID() << ")\n";
+		
+		/// Skip if not a pointer
+		if ( node->getValue() != nullptr )
+		{
+			auto typeID = node->getValue()->getType()->getTypeID();
+			if ( typeID != Type::PointerTyID )
+				return nullptr;
+		}
 		opcodeName = node->getOpcodeName();
 
 		/// If node is an operator collect the name, otherwise find the value node

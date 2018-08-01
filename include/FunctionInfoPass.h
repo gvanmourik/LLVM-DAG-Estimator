@@ -75,6 +75,7 @@ public:
 		// builder->print();
 		auto VDG = builder->getVDG();
 		VDG.lock();
+		VDG.print();
 		analysis.width = VDG.getWidth();
 		analysis.depth = VDG.getDepth();
 		VDG.unlock();

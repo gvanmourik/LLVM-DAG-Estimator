@@ -313,6 +313,7 @@ Function* generateTest1(LLVMContext &context, IRBuilder<> &builder, Module* modu
 
 	/// ForBodyBB
 	builder.SetInsertPoint(ForBodyBB);
+	// d = x * y + a + 3
 	xVal = builder.CreateLoad(x, "xVal");
 	yVal = builder.CreateLoad(y, "yVal");
 	aVal = builder.CreateLoad(a, "aVal");

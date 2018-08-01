@@ -40,9 +40,7 @@ public:
 			return false; 
 	}
 	bool isAnOperator() { return isOperator; }
-	bool hasDependents() { 
-		return !Ops.empty();
-	}
+	bool hasDependents() { return !Ops.empty(); }
 	bool isADependent() { return isDependent; }
 	std::string getName() { return name; }
 	std::string getOpcodeName() { return opcodeName; }
