@@ -23,11 +23,10 @@ OBJECT = $(SOURCE:.cpp=.o)
 all : $(TARGET)
 
 debug: CXXFLAGS += -DDEBUG -g
-debug: CPPFLAGS += -DDEBUG -g
 debug: $(TARGET) 
 
 %.o : %.cpp
-	@echo "\nCompiling (this will take a few seconds)..."
+	@echo "\nCompiling (patience you must have)..."
 	$(CC) $(INCLUDES) $(CXXFLAGS) -o $@ -c $<
 
 $(TARGET) : $(OBJECT)
