@@ -23,9 +23,10 @@ public:
 	void lock() { VDGIsLocked = true; }
 	
 	bool isVDGLocked() { return VDGIsLocked; }
-	int getDepID() { return ID; }
+	int getNodeCount() { return ID; }
 	int getWidth() { return findWidth(); }
 	int getDepth() { return findDepth(); }
+	std::string getDepNodeName(int ID) { return DependenceVertices[ID]->getName(); }
 	DepNode* getDepNode(int ID) { return DependenceVertices[ID]; }
 	DepNode* getDepNodeByName(std::string name) { return DependenceVertices[keyByName[name]]; }
 
@@ -37,12 +38,24 @@ protected:
 		ID++;
 	}
 
-	bool isNamePresentDep(std::string name)
+	bool isNamePresent(std::string name)
 	{
 		if( keyByName.count(name) == 0 )
 			return false;
 		else
 			return true;
+	}
+
+	DepNode* findDepRoot()
+	{
+		DepNode *currentNode;
+		for (int i = 0; i < ID; ++i)
+		{
+			currentNode = DependenceVertices[i];
+			if ( currentNode->hasDependents() && !currentNode->isADependent() )
+				return currentNode;
+		}
+		return nullptr;
 	}
 
 private:
@@ -118,24 +131,14 @@ private:
 		}
 	}
 
-	DepNode* findDepRoot()
-	{
-		DepNode *currentNode;
-		for (int i = 0; i < ID; ++i)
-		{
-			currentNode = DependenceVertices[i];
-			if ( currentNode->hasDependents() && !currentNode->isADependent() )
-				return currentNode;
-		}
-		return nullptr;
-	}
-
 public:
 	void clear() 
 	{ 
 		DependenceVertices.clear();
 		keyByName.clear();  
 	}
+
+	bool empty() { return DependenceVertices.empty(); }
 
 	void print()
 	{
@@ -182,11 +185,6 @@ public:
 		auto VDG_copy = VDG;
 		VDG.unlock();
 		return VDG_copy;
-	}
-
-	void mergeVDG(VariableDependencyGraph &VDG_source)
-	{
-
 	}
 
 
@@ -252,9 +250,6 @@ private:
 
 	DepNode* addDep(DAGNode *node, DepNode* parentNode, bool isOperator)
 	{
-		DepNode *op;
-		std::string name, opcodeName;
-		
 		/// Skip if not a pointer
 		if ( node->getValue() != nullptr )
 		{
@@ -262,6 +257,9 @@ private:
 			if ( typeID != Type::PointerTyID )
 				return nullptr;
 		}
+
+		DepNode *op;
+		std::string name, opcodeName;
 		opcodeName = node->getOpcodeName();
 
 		/// If node is an operator collect the name, otherwise find the value node
@@ -271,7 +269,7 @@ private:
 			name = findValueNode(node);
 
 		/// Check whether that op is already present as a dependency
-		if ( VDG.isNamePresentDep(name) )
+		if ( VDG.isNamePresent(name) )
 			op = VDG.getDepNodeByName(name);
 		else
 			op = newDepNode(name, opcodeName, isOperator);
@@ -279,7 +277,7 @@ private:
 		if (parentNode == nullptr)
 			return op; // adding a parentNode
 
-		parentNode->addOp(op, op->getID());
+		parentNode->addOp(op);
 		return op; // adding a member
 	}
 
@@ -295,10 +293,47 @@ private:
 
 	DepNode* newDepNode(std::string name, std::string opcodeName, bool isOperator)
 	{
-		DepNode* node = new DepNode(name, VDG.getDepID(), opcodeName, isOperator);
+		DepNode* node = new DepNode(name, VDG.getNodeCount(), opcodeName, isOperator);
 		VDG.setDepNode(node, name);
 		return node;
 	}
+
+	// bool mergeVDG(VariableDependencyGraph &VDG_source)
+	// {
+	// 	/// If source is empty, VDG remains unchanged
+	// 	if ( VDG_source.empty() )
+	// 		return true;
+
+	// 	DepNode *root = VDG.findDepRoot();
+	// 	DepNode *sourceRoot = VDG_source.findDepRoot();
+
+	// 	DepNode *VDG_ptr, *VDG_source_ptr;
+	// 	if ( !getFirstMatch(VDG_source, VDG_ptr, VDG_source_ptr) )
+	// 		return false;
+
+	// 	if ( VDG_source_ptr == sourceRoot )
+	// 	{
+
+	// 	}
+
+
+	// }
+
+	// bool getFirstMatch(VariableDependencyGraph &VDG_source, DepNode *VDG_ptr, DepNode* VDG_source_ptr)
+	// {
+	// 	std::string name;
+	// 	for (int id = 0; id < VDG_source.getNodeCount(); ++id)
+	// 	{
+	// 		name = VDG_source.getDepNodeName(id);
+	// 		if ( VDG.isNamePresent(name) )
+	// 		{
+	// 			VDG_ptr = VDG.getDepNodeByName(name);
+	// 			VDG_source_ptr = VDG_source.getDepNodeByName(name);
+	// 			return true;
+	// 		}
+	// 	}
+	// 	return false;
+	// }
 
 public:
 

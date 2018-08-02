@@ -72,7 +72,7 @@ public:
 		builder->fini();
 		// outs() << "FunctionInfoPass...\n";
 		// builder->printDependencyGraph();
-		// builder->print();
+		builder->print();
 		auto VDG = builder->getVDG();
 		VDG.lock();
 		VDG.print();

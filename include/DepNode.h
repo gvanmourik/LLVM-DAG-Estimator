@@ -18,6 +18,7 @@ private:
 	bool isOperator;
 	std::string opcodeName;
 	DepNodeList Ops;
+	DepNameList opsKeyByName;
 	bool isDependent;
 	bool visited;
 
@@ -32,13 +33,7 @@ public:
 			delete iter->second;
 	}
 
-	bool hasNotBeenVisited() 
-	{
-		if ( visited == false )
-			return true;
-		else
-			return false; 
-	}
+	bool hasNotBeenVisited() { return !visited; }
 	bool isAnOperator() { return isOperator; }
 	bool hasDependents() { return !Ops.empty(); }
 	bool isADependent() { return isDependent; }
@@ -46,17 +41,28 @@ public:
 	std::string getOpcodeName() { return opcodeName; }
 	int getID() { return ID; }
 	DepNodeList getOps() { return Ops; }
+	DepNode* getDependent(const std::string &name) { return Ops[opsKeyByName[name]]; }
 
 	void setID(int id) { ID = id; }
 	void markAsVisited() { visited = true; }
 	void setAsDependent() { isDependent = true; }
 
-	void addOp(DepNode *opNode, int id) 
+	void addOp(DepNode *opNode) 
 	{ 
+		int id = opNode->getID();
 		Ops[opCount] = opNode; 
 		Ops[opCount]->setID(id);
+		opsKeyByName[opNode->getName()] = id;
 		opNode->setAsDependent();
 		opCount++;
+	}
+
+	bool isDependentPresent(const std::string &name)
+	{
+		if( opsKeyByName.count(name) == 0 )
+			return false;
+		else
+			return true;
 	}
 
 	void print()

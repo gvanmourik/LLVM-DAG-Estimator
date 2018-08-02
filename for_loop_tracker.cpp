@@ -16,6 +16,7 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IRReader/IRReader.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/TargetSelect.h>
@@ -46,7 +47,7 @@
 using namespace llvm;
 
 /// Function declarations
-Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
+// Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
 PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString);
 ExecutionEngine *buildExecutionEngine(std::unique_ptr<Module> &module);
 static TargetMachine *buildTargetMachine();
@@ -55,8 +56,8 @@ static TargetMachine *buildTargetMachine();
 #endif
 
 // TEST
-Function* generateTest1(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
-Function* generateTest2(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters, Function *callee);
+// Function* generateTest1(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters);
+// Function* generateTest2(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters, Function *callee);
 
 
 int main(int argc, char* argv[])
@@ -80,28 +81,30 @@ int main(int argc, char* argv[])
 	/// LLVM IR Variables
 	static LLVMContext context;
 	static IRBuilder<> builder(context);
-	std::unique_ptr<Module> mainModule( new Module("ForLoopFncModule", context) );
-	Module *module = mainModule.get();
+	std::unique_ptr<Module> mainModule( new Module("TestModule", context) );
+	// Module *module = mainModule.get();
 	PassBuilder passBuilder;
 	InitializeNativeTarget();
 	InitializeNativeTargetAsmPrinter();
 
-	/// Specify target features
-	static auto targetMachine = buildTargetMachine();
-	module->setDataLayout(targetMachine->createDataLayout());
-	module->setTargetTriple( targetMachine->getTargetTriple().getTriple() );
+	SMDiagnostic err;
+	mainModule = parseIRFile("genIR/sample2.ll", err, context);
+	Module* module = mainModule.get();
 
-	/// Returned IR function
-	// static Function *ForLoopFnc = generateForLoop( context, builder, module, N );
-	// static Function *TestFnc = generateTest( context, builder, module, N );
-	// generateForLoop(context, builder, module, N);
-	static Function *callee = generateTest1(context, builder, module, N);
-	static Function *caller = generateTest2(context, builder, module, N, callee);
+	if (!module)
+	{
+		err.print(argv[0], errs());
+		return -1;
+	}
+
+	// /// Returned IR function
+	// static Function *callee = generateTest1(context, builder, module, N);
+	// static Function *caller = generateTest2(context, builder, module, N, callee);
 
 	/// CFG Before
 	#ifdef GEN_CFG
-		generateCFG(TestFnc, "TestFnc", passBuilder, false);
-		generateCFG(ForLoopFnc, "ForLoopFncBefore", passBuilder, false);
+		// generateCFG(TestFnc, "TestFnc", passBuilder, false);
+		// generateCFG(ForLoopFnc, "ForLoopFncBefore", passBuilder, false);
 	#endif
 
 	/// Function analysis and pass managers
@@ -110,10 +113,8 @@ int main(int argc, char* argv[])
 	static FunctionPassManager *FPM = 
 		new FunctionPassManager(DebugPM);
 
-	static ModuleAnalysisManager *MAM = 
-		new ModuleAnalysisManager(DebugAM);
-	// static CGSCCAnalysisManager *CGAM = 
-	// 	new CGSCCAnalysisManager(DebugAM);
+	// static ModuleAnalysisManager *MAM = 
+	// 	new ModuleAnalysisManager(DebugAM);
 	static FunctionAnalysisManager *FAM = 
 		new FunctionAnalysisManager(DebugAM);
 	static LoopAnalysisManager *LAM = 
@@ -165,10 +166,15 @@ int main(int argc, char* argv[])
 
 
 	// outs() << *caller;
-	auto &FA2 = FAM->getResult<FunctionInfoPass>(*caller);
-	outs() << "----------------------------------------\n";
-	FA2.printAnalysis();
-	outs() << "----------------------------------------\n";
+	// outs() << *module;
+	for (auto iter=module->begin(); iter!=module->end(); ++iter)
+	{
+		auto &FA = FAM->getResult<FunctionInfoPass>(*iter);
+		outs() << "----------------------------------------\n";
+		FA.printAnalysis();
+		outs() << "----------------------------------------\n";
+	}
+		
 	// auto &result = MAM->getResult<ModuleInfoPass>(*module);
 	// print<ModuleAnalysisInfo>(result);
 
@@ -181,229 +187,229 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters)
-{
-	Function *ForLoopFnc = 
-		cast<Function>( module->getOrInsertFunction("ForLoopFnc", Type::getInt32Ty(context)) );
+// Function* generateForLoop(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters)
+// {
+// 	Function *ForLoopFnc = 
+// 		cast<Function>( module->getOrInsertFunction("ForLoopFnc", Type::getInt32Ty(context)) );
 
-	Value* N = ConstantInt::get(builder.getInt32Ty(), iters);
-	Value* zero = ConstantInt::get(builder.getInt32Ty(), 0);
-	Value* one = ConstantInt::get(builder.getInt32Ty(), 1);
-	Value* two = ConstantInt::get(builder.getInt32Ty(), 2);
-	Value* three = ConstantInt::get(builder.getInt32Ty(), 3);
+// 	Value* N = ConstantInt::get(builder.getInt32Ty(), iters);
+// 	Value* zero = ConstantInt::get(builder.getInt32Ty(), 0);
+// 	Value* one = ConstantInt::get(builder.getInt32Ty(), 1);
+// 	Value* two = ConstantInt::get(builder.getInt32Ty(), 2);
+// 	Value* three = ConstantInt::get(builder.getInt32Ty(), 3);
 
-	/// BBs Outline
-	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", ForLoopFnc);
-	BasicBlock *ForLoop1EntryBB = BasicBlock::Create(context, "forLoop1Entry", ForLoopFnc);
-		BasicBlock *IfEntryBB = BasicBlock::Create(context, "ifEntry", ForLoopFnc);
-		BasicBlock *ThenBB = BasicBlock::Create(context, "then", ForLoopFnc);
-		BasicBlock *ElseBB = BasicBlock::Create(context, "else", ForLoopFnc);
-		BasicBlock *MergeBB = BasicBlock::Create(context, "merge", ForLoopFnc);
-	BasicBlock *ForLoop1ExitBB = BasicBlock::Create(context, "forLoop1Exit", ForLoopFnc);
-	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", ForLoopFnc);
+// 	/// BBs Outline
+// 	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", ForLoopFnc);
+// 	BasicBlock *ForLoop1EntryBB = BasicBlock::Create(context, "forLoop1Entry", ForLoopFnc);
+// 		BasicBlock *IfEntryBB = BasicBlock::Create(context, "ifEntry", ForLoopFnc);
+// 		BasicBlock *ThenBB = BasicBlock::Create(context, "then", ForLoopFnc);
+// 		BasicBlock *ElseBB = BasicBlock::Create(context, "else", ForLoopFnc);
+// 		BasicBlock *MergeBB = BasicBlock::Create(context, "merge", ForLoopFnc);
+// 	BasicBlock *ForLoop1ExitBB = BasicBlock::Create(context, "forLoop1Exit", ForLoopFnc);
+// 	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", ForLoopFnc);
 	
-	/// Variables
-	Value *ifiLTN, *ifEqual, *i, *iVal, *counter, 
-		  *counterAVal, *cmpVal, *returnValue;
+// 	/// Variables
+// 	Value *ifiLTN, *ifEqual, *i, *iVal, *counter, 
+// 		  *counterAVal, *cmpVal, *returnValue;
 
 
-	/// EntryBB
-	builder.SetInsertPoint(EntryBB);
-	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
-	counter = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "counter");	
-	builder.CreateStore(zero, i);
-	builder.CreateStore(zero, counter);
-	builder.CreateBr(ForLoop1EntryBB);
+// 	/// EntryBB
+// 	builder.SetInsertPoint(EntryBB);
+// 	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
+// 	counter = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "counter");	
+// 	builder.CreateStore(zero, i);
+// 	builder.CreateStore(zero, counter);
+// 	builder.CreateBr(ForLoop1EntryBB);
 
-	/// ForLoop1EntryBB
-	builder.SetInsertPoint(ForLoop1EntryBB);
-	iVal = builder.CreateLoad(i, "iVal");
-	ifiLTN = builder.CreateICmpULT(iVal, N, "ifiLTN");
-	builder.CreateCondBr(ifiLTN, IfEntryBB, ForLoop1ExitBB);
+// 	/// ForLoop1EntryBB
+// 	builder.SetInsertPoint(ForLoop1EntryBB);
+// 	iVal = builder.CreateLoad(i, "iVal");
+// 	ifiLTN = builder.CreateICmpULT(iVal, N, "ifiLTN");
+// 	builder.CreateCondBr(ifiLTN, IfEntryBB, ForLoop1ExitBB);
 
-		/// IfEntryBB
-		builder.SetInsertPoint(IfEntryBB);
-		iVal = builder.CreateLoad(i, "iVal");
-		cmpVal = builder.CreateAdd(builder.CreateMul(iVal, two), one);
-		cmpVal = builder.CreateURem(cmpVal, three, "modVal");
-		ifEqual = builder.CreateICmpEQ(cmpVal, zero, "ifEqual");
-		builder.CreateCondBr(ifEqual, ThenBB, ElseBB);
+// 		/// IfEntryBB
+// 		builder.SetInsertPoint(IfEntryBB);
+// 		iVal = builder.CreateLoad(i, "iVal");
+// 		cmpVal = builder.CreateAdd(builder.CreateMul(iVal, two), one);
+// 		cmpVal = builder.CreateURem(cmpVal, three, "modVal");
+// 		ifEqual = builder.CreateICmpEQ(cmpVal, zero, "ifEqual");
+// 		builder.CreateCondBr(ifEqual, ThenBB, ElseBB);
 
-		/// ThenBB (increment counter)
-		builder.SetInsertPoint(ThenBB);
-		counterAVal = builder.CreateLoad(counter, "counterAVal");
-		counterAVal = builder.CreateAdd(counterAVal, one);
-		builder.CreateStore(counterAVal, counter);
-		builder.CreateBr(MergeBB);
+// 		/// ThenBB (increment counter)
+// 		builder.SetInsertPoint(ThenBB);
+// 		counterAVal = builder.CreateLoad(counter, "counterAVal");
+// 		counterAVal = builder.CreateAdd(counterAVal, one);
+// 		builder.CreateStore(counterAVal, counter);
+// 		builder.CreateBr(MergeBB);
 
-		/// ElseBB (do nothing)
-		builder.SetInsertPoint(ElseBB);
-		///
-		/// IF another option is required for the counter complete here:
-		// counterBVal = builder.CreateLoad(counter, "counterBVal");
-		// counterBVal = builder.CreateAdd(counterBVal, one);
-		// builder.CreateStore(counterBVal, counter);
-		///
-		builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "dummyAlloca");
-		builder.CreateBr(MergeBB);
+// 		/// ElseBB (do nothing)
+// 		builder.SetInsertPoint(ElseBB);
+// 		///
+// 		/// IF another option is required for the counter complete here:
+// 		// counterBVal = builder.CreateLoad(counter, "counterBVal");
+// 		// counterBVal = builder.CreateAdd(counterBVal, one);
+// 		// builder.CreateStore(counterBVal, counter);
+// 		///
+// 		builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "dummyAlloca");
+// 		builder.CreateBr(MergeBB);
 
-		/// MergeBB
-		builder.SetInsertPoint(MergeBB);
-		iVal = builder.CreateAdd(iVal, one, "i++");
-		builder.CreateStore(iVal, i);
-		builder.CreateBr(ForLoop1EntryBB);
+// 		/// MergeBB
+// 		builder.SetInsertPoint(MergeBB);
+// 		iVal = builder.CreateAdd(iVal, one, "i++");
+// 		builder.CreateStore(iVal, i);
+// 		builder.CreateBr(ForLoop1EntryBB);
 	
-	/// ForLoop1ExitBB
-	builder.SetInsertPoint(ForLoop1ExitBB);
-	builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "dummyAlloca");
-	builder.CreateBr(ExitBB);
+// 	/// ForLoop1ExitBB
+// 	builder.SetInsertPoint(ForLoop1ExitBB);
+// 	builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "dummyAlloca");
+// 	builder.CreateBr(ExitBB);
 
-	/// ExitBB
-	builder.SetInsertPoint(ExitBB);
-	returnValue = builder.CreateLoad(counter, "finalCount");
-	ReturnInst::Create(context, returnValue, ExitBB);
+// 	/// ExitBB
+// 	builder.SetInsertPoint(ExitBB);
+// 	returnValue = builder.CreateLoad(counter, "finalCount");
+// 	ReturnInst::Create(context, returnValue, ExitBB);
 
 
-	return ForLoopFnc;
-}
+// 	return ForLoopFnc;
+// }
 
-Function* generateTest1(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters)
-{
-	Function *TestFnc = 
-		cast<Function>( module->getOrInsertFunction("Callee", Type::getVoidTy(context)) );
+// Function* generateTest1(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters)
+// {
+// 	Function *TestFnc = 
+// 		cast<Function>( module->getOrInsertFunction("Callee", Type::getVoidTy(context)) );
 
-	Value* N = ConstantInt::get(builder.getInt32Ty(), iters);
-	Value* zero = ConstantInt::get(builder.getInt32Ty(), 0);
-	Value* one = ConstantInt::get(builder.getInt32Ty(), 1);
-	Value* two = ConstantInt::get(builder.getInt32Ty(), 2);
-	Value* three = ConstantInt::get(builder.getInt32Ty(), 3);
+// 	Value* N = ConstantInt::get(builder.getInt32Ty(), iters);
+// 	Value* zero = ConstantInt::get(builder.getInt32Ty(), 0);
+// 	Value* one = ConstantInt::get(builder.getInt32Ty(), 1);
+// 	Value* two = ConstantInt::get(builder.getInt32Ty(), 2);
+// 	Value* three = ConstantInt::get(builder.getInt32Ty(), 3);
 
-	/// BBs Outline
-	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", TestFnc);
-	BasicBlock *ForEntryBB = BasicBlock::Create(context, "forEntry", TestFnc);
-	BasicBlock *ForBodyBB = BasicBlock::Create(context, "forBody", TestFnc);
-	BasicBlock *ForIncBB = BasicBlock::Create(context, "forInc", TestFnc);
-	BasicBlock *ForExitBB = BasicBlock::Create(context, "forExit", TestFnc);
-	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", TestFnc);
+// 	/// BBs Outline
+// 	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", TestFnc);
+// 	BasicBlock *ForEntryBB = BasicBlock::Create(context, "forEntry", TestFnc);
+// 	BasicBlock *ForBodyBB = BasicBlock::Create(context, "forBody", TestFnc);
+// 	BasicBlock *ForIncBB = BasicBlock::Create(context, "forInc", TestFnc);
+// 	BasicBlock *ForExitBB = BasicBlock::Create(context, "forExit", TestFnc);
+// 	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", TestFnc);
 	
-	/// Variables
-	Value *if_i_LT_N, *a, *c, *d, *f, *x, *y, 
-		  *i, *aVal, *cVal, *dVal, *fVal, *xVal, *yVal, *iVal;
+// 	/// Variables
+// 	Value *if_i_LT_N, *a, *c, *d, *f, *x, *y, 
+// 		  *i, *aVal, *cVal, *dVal, *fVal, *xVal, *yVal, *iVal;
 
-	/// EntryBB
-	builder.SetInsertPoint(EntryBB);
-	a = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "a");
-	c = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "c");
-	d = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "d");
-	f = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "f");
-	x = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "x");
-	y = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "y");
-	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
-	builder.CreateStore(two, a);
-	builder.CreateStore(two, x);
-	builder.CreateStore(three, y);
-	builder.CreateStore(zero, i);
-	builder.CreateBr(ForEntryBB);
+// 	/// EntryBB
+// 	builder.SetInsertPoint(EntryBB);
+// 	a = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "a");
+// 	c = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "c");
+// 	d = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "d");
+// 	f = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "f");
+// 	x = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "x");
+// 	y = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "y");
+// 	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
+// 	builder.CreateStore(two, a);
+// 	builder.CreateStore(two, x);
+// 	builder.CreateStore(three, y);
+// 	builder.CreateStore(zero, i);
+// 	builder.CreateBr(ForEntryBB);
 
-	/// ForEntryBB
-	builder.SetInsertPoint(ForEntryBB);
-	iVal = builder.CreateLoad(i, "iVal");
-	if_i_LT_N = builder.CreateICmpULT(iVal, N, "if_i_LT_N");
-	builder.CreateCondBr(if_i_LT_N, ForBodyBB, ForExitBB);
+// 	/// ForEntryBB
+// 	builder.SetInsertPoint(ForEntryBB);
+// 	iVal = builder.CreateLoad(i, "iVal");
+// 	if_i_LT_N = builder.CreateICmpULT(iVal, N, "if_i_LT_N");
+// 	builder.CreateCondBr(if_i_LT_N, ForBodyBB, ForExitBB);
 
-	/// ForBodyBB
-	builder.SetInsertPoint(ForBodyBB);
-	// d = x * y + a + 3
-	xVal = builder.CreateLoad(x, "xVal");
-	yVal = builder.CreateLoad(y, "yVal");
-	aVal = builder.CreateLoad(a, "aVal");
-	dVal = builder.CreateMul(xVal, yVal, "x*y");
-	aVal = builder.CreateAdd(aVal, three, "a+3");
-	dVal = builder.CreateAdd(dVal, aVal, "x*y+a+3");
-	builder.CreateStore(dVal, d);
-	// f = 3 * a
-	aVal = builder.CreateLoad(a, "aVal");
-	fVal = builder.CreateMul(three, aVal, "3*a");
-	builder.CreateStore(fVal, f);
-	// c = d + f
-	dVal = builder.CreateLoad(d, "dVal");
-	fVal = builder.CreateLoad(f, "fVal");
-	cVal = builder.CreateAdd(dVal, fVal, "d+f");
-	builder.CreateStore(cVal, c);
-	builder.CreateBr(ForIncBB);
+// 	/// ForBodyBB
+// 	builder.SetInsertPoint(ForBodyBB);
+// 	// d = x * y + a + 3
+// 	xVal = builder.CreateLoad(x, "xVal");
+// 	yVal = builder.CreateLoad(y, "yVal");
+// 	aVal = builder.CreateLoad(a, "aVal");
+// 	dVal = builder.CreateMul(xVal, yVal, "x*y");
+// 	aVal = builder.CreateAdd(aVal, three, "a+3");
+// 	dVal = builder.CreateAdd(dVal, aVal, "x*y+a+3");
+// 	builder.CreateStore(dVal, d);
+// 	// f = 3 * a
+// 	aVal = builder.CreateLoad(a, "aVal");
+// 	fVal = builder.CreateMul(three, aVal, "3*a");
+// 	builder.CreateStore(fVal, f);
+// 	// c = d + f
+// 	dVal = builder.CreateLoad(d, "dVal");
+// 	fVal = builder.CreateLoad(f, "fVal");
+// 	cVal = builder.CreateAdd(dVal, fVal, "d+f");
+// 	builder.CreateStore(cVal, c);
+// 	builder.CreateBr(ForIncBB);
 
-	/// ForIncBB
-	builder.SetInsertPoint(ForIncBB);
-	iVal = builder.CreateAdd(iVal, one, "i++");
-	builder.CreateStore(iVal, i);
-	builder.CreateBr(ForEntryBB);
+// 	/// ForIncBB
+// 	builder.SetInsertPoint(ForIncBB);
+// 	iVal = builder.CreateAdd(iVal, one, "i++");
+// 	builder.CreateStore(iVal, i);
+// 	builder.CreateBr(ForEntryBB);
 	
-	/// ForExitBB
-	builder.SetInsertPoint(ForExitBB);
-	builder.CreateBr(ExitBB);
+// 	/// ForExitBB
+// 	builder.SetInsertPoint(ForExitBB);
+// 	builder.CreateBr(ExitBB);
 
-	/// ExitBB
-	builder.SetInsertPoint(ExitBB);
-	ReturnInst::Create(context, ExitBB);
+// 	/// ExitBB
+// 	builder.SetInsertPoint(ExitBB);
+// 	ReturnInst::Create(context, ExitBB);
 
 
-	return TestFnc;
-}
+// 	return TestFnc;
+// }
 
-Function* generateTest2(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters, Function *callee)
-{
-	Function *TestFnc = 
-		cast<Function>( module->getOrInsertFunction("Caller", Type::getVoidTy(context)) );
+// Function* generateTest2(LLVMContext &context, IRBuilder<> &builder, Module* module, int iters, Function *callee)
+// {
+// 	Function *TestFnc = 
+// 		cast<Function>( module->getOrInsertFunction("Caller", Type::getVoidTy(context)) );
 
-	Value* N = ConstantInt::get(builder.getInt32Ty(), iters);
-	Value* zero = ConstantInt::get(builder.getInt32Ty(), 0);
-	Value* one = ConstantInt::get(builder.getInt32Ty(), 1);
+// 	Value* N = ConstantInt::get(builder.getInt32Ty(), iters);
+// 	Value* zero = ConstantInt::get(builder.getInt32Ty(), 0);
+// 	Value* one = ConstantInt::get(builder.getInt32Ty(), 1);
 
-	/// BBs Outline
-	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", TestFnc);
-	BasicBlock *ForEntryBB = BasicBlock::Create(context, "forEntry", TestFnc);
-	BasicBlock *ForBodyBB = BasicBlock::Create(context, "forBody", TestFnc);
-	BasicBlock *ForIncBB = BasicBlock::Create(context, "forInc", TestFnc);
-	BasicBlock *ForExitBB = BasicBlock::Create(context, "forExit", TestFnc);
-	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", TestFnc);
+// 	/// BBs Outline
+// 	BasicBlock *EntryBB = BasicBlock::Create(context, "entry", TestFnc);
+// 	BasicBlock *ForEntryBB = BasicBlock::Create(context, "forEntry", TestFnc);
+// 	BasicBlock *ForBodyBB = BasicBlock::Create(context, "forBody", TestFnc);
+// 	BasicBlock *ForIncBB = BasicBlock::Create(context, "forInc", TestFnc);
+// 	BasicBlock *ForExitBB = BasicBlock::Create(context, "forExit", TestFnc);
+// 	BasicBlock *ExitBB = BasicBlock::Create(context, "exit", TestFnc);
 	
-	/// Variables
-	Value *if_i_LT_N, *i, *iVal;
+// 	/// Variables
+// 	Value *if_i_LT_N, *i, *iVal;
 
-	/// EntryBB
-	builder.SetInsertPoint(EntryBB);
-	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
-	builder.CreateStore(zero, i);
-	builder.CreateBr(ForEntryBB);
+// 	/// EntryBB
+// 	builder.SetInsertPoint(EntryBB);
+// 	i = builder.CreateAlloca(Type::getInt32Ty(context), nullptr, "i");
+// 	builder.CreateStore(zero, i);
+// 	builder.CreateBr(ForEntryBB);
 
-	/// ForEntryBB
-	builder.SetInsertPoint(ForEntryBB);
-	iVal = builder.CreateLoad(i, "iVal");
-	if_i_LT_N = builder.CreateICmpULT(iVal, N, "if_i_LT_N");
-	builder.CreateCondBr(if_i_LT_N, ForBodyBB, ForExitBB);
+// 	/// ForEntryBB
+// 	builder.SetInsertPoint(ForEntryBB);
+// 	iVal = builder.CreateLoad(i, "iVal");
+// 	if_i_LT_N = builder.CreateICmpULT(iVal, N, "if_i_LT_N");
+// 	builder.CreateCondBr(if_i_LT_N, ForBodyBB, ForExitBB);
 
-	/// ForBodyBB
-	builder.SetInsertPoint(ForBodyBB);
-	builder.CreateCall(callee);
-	builder.CreateBr(ForIncBB);
+// 	/// ForBodyBB
+// 	builder.SetInsertPoint(ForBodyBB);
+// 	builder.CreateCall(callee);
+// 	builder.CreateBr(ForIncBB);
 
-	/// ForIncBB
-	builder.SetInsertPoint(ForIncBB);
-	iVal = builder.CreateAdd(iVal, one, "i++");
-	builder.CreateStore(iVal, i);
-	builder.CreateBr(ForEntryBB);
+// 	/// ForIncBB
+// 	builder.SetInsertPoint(ForIncBB);
+// 	iVal = builder.CreateAdd(iVal, one, "i++");
+// 	builder.CreateStore(iVal, i);
+// 	builder.CreateBr(ForEntryBB);
 	
-	/// ForExitBB
-	builder.SetInsertPoint(ForExitBB);
-	builder.CreateBr(ExitBB);
+// 	/// ForExitBB
+// 	builder.SetInsertPoint(ForExitBB);
+// 	builder.CreateBr(ExitBB);
 
-	/// ExitBB
-	builder.SetInsertPoint(ExitBB);
-	ReturnInst::Create(context, ExitBB);
+// 	/// ExitBB
+// 	builder.SetInsertPoint(ExitBB);
+// 	ReturnInst::Create(context, ExitBB);
 
 
-	return TestFnc;
-}
+// 	return TestFnc;
+// }
 
 PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString)
 {
