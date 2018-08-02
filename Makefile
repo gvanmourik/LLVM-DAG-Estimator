@@ -5,12 +5,10 @@ CC := clang++
 
 INCLUDES := -I$(CLANG_HOME)/include \
 			-Iinclude
-CXXFLAGS := -fno-use-cxa-atexit \
-			-fno-rtti \
-			`llvm-config --cxxflags --ldflags --system-libs --libs all core mcjit native` \
-			-rdynamic
-CFLAGS := -fno-rtti \
-		  `llvm-config --cxxflags`
+CXXFLAGS := -fno-rtti \
+			`$(CLANG_HOME)/bin/llvm-config --cxxflags --ldflags --system-libs --libs all core mcjit native` \
+			-rdynamic \
+			-Wno-unused-command-line-argument
 LDFLAGS := -std=c++11
 LIBS :=
 
@@ -30,7 +28,7 @@ debug: $(TARGET)
 
 %.o : %.cpp
 	@echo "\nCompiling (this will take a few seconds)..."
-	$(CC) $(INCLUDES) $(CFLAGS) -o $@ -c $<
+	$(CC) $(INCLUDES) $(CXXFLAGS) -o $@ -c $<
 
 $(TARGET) : $(OBJECT)
 	@echo "\nLinking..."
