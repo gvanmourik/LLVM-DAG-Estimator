@@ -52,35 +52,6 @@ public:
 		if ( isAlloca(inst) )
 			return false;
 
-		// if ( isa<BinaryOperator>(inst) )
-		// {
-		// 	outs() << "Inst Name = " << inst->getName() << "\n";
-		// 	if ( inst->getOperand(0)->hasName() )
-		// 		/// INSTRUCTION
-		// 		outs() << "PtrOpName = " << inst->getOperand(0)->getName() << "\n";
-
-		// 	if ( isa<LoadInst>(inst->getOperand(0)) )
-		// 	{
-		// 		llvm::LoadInst *loadInst = cast<LoadInst>(inst->getOperand(0));
-		// 		outs() << "     Test0 = " << loadInst->getPointerOperand()->getName() << "\n\n";
-		// 	}
-		// 	if ( isa<LoadInst>(inst->getOperand(1)) )
-		// 	{
-		// 		llvm::LoadInst *loadInst = cast<LoadInst>(inst->getOperand(1));
-		// 		outs() << "     Test1 = " << loadInst->getPointerOperand()->getName() << "\n\n";
-		// 	}
-		// 	else
-		// 	{
-		// 		outs() << "constant value...\n";
-		// 	}	
-			
-		// }
-		// if ( isa<LoadInst>(inst) )
-		// {
-		// 	llvm::LoadInst *loadInst = cast<LoadInst>(inst);
-		// 	outs() << "Test Load = " << loadInst->getPointerOperand()->getName() << "\n\n";
-		// }
-
 		DAGNode *instNode;
 
 		/// Add operator
@@ -116,7 +87,9 @@ public:
 				}
 				else
 				{
+					outs() << "in else!!! Node = ";
 					instNode = DAGVertices[keyByName[name]];
+					outs() << instNode->getName() << "\n";
 				}
 			}
 			return true;
@@ -172,17 +145,24 @@ private:
 		// 	instName = genName();
 		
 		// DAGVertices[ID]->setName(instName);
+		std::string instName;
+
 		if ( inst->hasName() )
-			DAGVertices[ID]->setName( inst->getName() );
+		{
+			instName = inst->getName();
+		}
 		else if ( isa<StoreInst>(inst) )
 		{
 			std::string variableName = inst->getOperand(1)->getName();
-			DAGVertices[ID]->setName("store_" + variableName);
+			instName = "store_" + variableName;
 		}
 		else
-			DAGVertices[ID]->setName( genName() );
+		{
+			instName = genName();
+		}
 		
-		keyByName[inst->getName()] = ID;
+		DAGVertices[ID]->setName(instName);
+		keyByName[instName] = ID;
 		DAGNode *node = DAGVertices[ID];
 		ID++;
 
@@ -226,14 +206,10 @@ private:
 
 	std::string genLoadInstName(Instruction *inst)
 	{
-		// if ( inst->hasOneUse() )
-		// 	return false;
-
 		std::string instName;
 		if ( isa<LoadInst>(inst) )
 		{
 			llvm::LoadInst *loadInst = cast<LoadInst>(inst);
-			// outs() << "Test Load = " << loadInst->getPointerOperand()->getName() << "\n\n";
 			instName = loadInst->getPointerOperand()->getName();
 			return "load_" + instName;
 		}
@@ -248,12 +224,6 @@ private:
 		NameCount++;
 		return "val_" + std::to_string(NameCount);
 	}
-
-	// std::string genStoreName()
-	// {
-	// 	WriteCount++;
-	// 	return "Store_" + std::to_string(WriteCount);
-	// }
 
 	void resetNameCount(llvm::Value *target)
 	{

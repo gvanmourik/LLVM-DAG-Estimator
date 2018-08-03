@@ -49,12 +49,15 @@ public:
 
 	void addOp(DepNode *opNode) 
 	{ 
-		int id = opNode->getID();
-		Ops[opCount] = opNode; 
-		Ops[opCount]->setID(id);
-		opsKeyByName[opNode->getName()] = id;
-		opNode->setAsDependent();
-		opCount++;
+		if ( !isDependentPresent(opNode->getName()) )
+		{
+			int id = opNode->getID();
+			Ops[opCount] = opNode; 
+			Ops[opCount]->setID(id);
+			opsKeyByName[opNode->getName()] = id;
+			opNode->setAsDependent();
+			opCount++;
+		}
 	}
 
 	bool isDependentPresent(const std::string &name)

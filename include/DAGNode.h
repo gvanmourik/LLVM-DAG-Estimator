@@ -67,6 +67,12 @@ public:
 	unsigned getOpcode() { return opcode; }
 	bool isValueOnlyNode() { return valueOnlyNode; }
 
+	void setAsInstNode() 
+	{ 
+		opcode = Inst->getOpcode();
+		valueOnlyNode = false;
+		Val = nullptr;
+	}
 	void setLeft(DAGNode *assignedNode) { left = assignedNode; }
 	void setRight(DAGNode *assignedNode) { right = assignedNode; }
 	void setValue(llvm::Value *val) { Val = val; }

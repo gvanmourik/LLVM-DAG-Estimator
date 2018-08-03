@@ -229,10 +229,11 @@ private:
 		const bool isOperator = true;
 		if ( node->isValueOnlyNode() )
 		{
+			// outs() << "adding Node = " << node->getName() << "\n";
 			/// Base case
 			addDep(node, primaryOperand, !isOperator);
 		}
-		else if ( node->getOpcode() == Instruction::Load )
+		else if ( node->getOpcode() == Instruction::Load || node->getOpcode() == Instruction::Store )
 		{
 			/// Collect Value of the load (node->right == nullptr)
 			addDepWrapper(node->getLeft(), primaryOperand);
@@ -240,7 +241,6 @@ private:
 		else
 		{
 			/// Binary operator case
-			// add operator
 			DepNode* Operator = addDep(node, primaryOperand, isOperator);
 
 			addDepWrapper(node->getLeft(), Operator);
@@ -275,8 +275,11 @@ private:
 			op = newDepNode(name, opcodeName, isOperator);
 
 		if (parentNode == nullptr)
+		{
 			return op; // adding a parentNode
+		}
 
+		/// Add dependency to the parent node
 		parentNode->addOp(op);
 		return op; // adding a member
 	}
