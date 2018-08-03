@@ -1,7 +1,7 @@
 #ifndef DAG_BUILDER_H
 #define DAG_BUILDER_H
 
-#include "VDGBuilder.h"
+#include "DGBuilder.h"
 #include "DAGNode.h"
 #include "DepNode.h"
 
@@ -10,26 +10,25 @@ typedef std::unordered_map<std::string, llvm::Instruction*> DAGInstTracker;
 class DAGBuilder 
 {
 private:
-	VDGBuilder *vdgBuilder;
+	DGBuilder *dgBuilder; //dependence graph builder
 	DAGVertexList DAGVertices;
 	DAGNameList keyByName;
 	DAGInstTracker instByName;
 	int ID;
 	int NameCount;
-	int WriteCount;
 	bool hasBeenInitialized;
 	bool DAGIsLocked;
 
 
 public:
-	DAGBuilder() : vdgBuilder(nullptr), ID(0), NameCount(0), WriteCount(0), hasBeenInitialized(false) {}
+	DAGBuilder() : dgBuilder(nullptr), ID(0), NameCount(0), hasBeenInitialized(false) {}
 	~DAGBuilder() {}
 
 	void lock() { DAGIsLocked = true; }
-	VariableDependencyGraph getVDG() 
+	DependencyGraph getDG() 
 	{ 
-		assert( vdgBuilder != nullptr && "VDGBuilder has not been set. Use createDependenceGraph()");
-		return vdgBuilder->getVDG();
+		assert( dgBuilder != nullptr && "DGBuilder has not been set. Use createDG()");
+		return dgBuilder->getDG();
 	}
 
 	void init()
@@ -44,73 +43,17 @@ public:
 	bool add(llvm::Instruction *inst)
 	{
 		assert( hasBeenInitialized && "Builder has not been initialized! Do so with init()");
-		/// Check if instruction is invalid operator (aka branch)
+		/// Ignore the following
 		if ( isInvalidOperator(inst) )
 			return false;
 		if ( isBranch(inst) )
 			return false;
 		if ( isAlloca(inst) )
 			return false;
+		if ( isReturn(inst) )
+			return false;
 
-		DAGNode *instNode;
-
-		/// Add operator
-		if ( !inst->hasName() ) ///not doing anything....
-		{
-			std::string name = genLoadInstName(inst);
-			if ( name != "<not a load>" )
-			{
-				if ( !isNamePresent(name) )
-				{
-					// outs() << "setting name to = " << name << "\n";
-
-					if ( !isa<StoreInst>(inst) )
-						inst->setName(name);
-					instNode = addVertex(inst);
-					// instByName[name] = inst;
-
-
-					/// Add operands
-					auto iter = inst->op_begin();
-					llvm::Value *val = iter->get();
-					if ( hasTwoOperands(inst) )
-					{
-						addOperand(val, inst, instNode); //first
-						iter++;
-						val = iter->get();
-						addOperand(val, inst, instNode); //second
-					}
-					else
-					{
-						addOperand(val, inst, instNode);
-					}
-				}
-				else
-				{
-					outs() << "in else!!! Node = ";
-					instNode = DAGVertices[keyByName[name]];
-					outs() << instNode->getName() << "\n";
-				}
-			}
-			return true;
-		}
-		
-		instNode = addVertex(inst);
-
-		/// Add operands
-		auto iter = inst->op_begin();
-		llvm::Value *val = iter->get();
-		if ( hasTwoOperands(inst) )
-		{
-			addOperand(val, inst, instNode); //first
-			iter++;
-			val = iter->get();
-			addOperand(val, inst, instNode); //second
-		}
-		else
-		{
-			addOperand(val, inst, instNode);
-		}
+		addOperator(inst);
 
 		return true;
 	}
@@ -126,109 +69,110 @@ private:
 				parentNode->setRight(childNode);
 		}
 	}
-	
-	DAGNode* addVertex(llvm::Instruction *inst)
+
+	void addOperator(llvm::Instruction *inst)
 	{
-		DAGVertices[ID] = new DAGNode(inst, ID);
-		// std::string instName;
-
-		// if ( inst->hasName() )
-		// {
-		// 	instName = inst->getName();
-		// 	// instName = genInstName(inst);
-		// 	// if ( instName == "<no name>" )
-		// 	// 	instName = genName();
-		// 	// if ( !isNamePresent(instName) )
-		// 	// 	DAGVertices[ID]->setName(instName);
-		// }
-		// else
-		// 	instName = genName();
+		DAGNode *operatorNode;
 		
-		// DAGVertices[ID]->setName(instName);
-		std::string instName;
-
+		// if inst has name, then it will be unique
 		if ( inst->hasName() )
 		{
-			instName = inst->getName();
-		}
-		else if ( isa<StoreInst>(inst) )
-		{
-			std::string variableName = inst->getOperand(1)->getName();
-			instName = "store_" + variableName;
+			operatorNode = addVertex(inst, inst->getName());
+			// outs() << "instName = " << inst->getName() << "\n";
+			addOperands(inst, operatorNode);
 		}
 		else
 		{
-			instName = genName();
-		}
-		
-		DAGVertices[ID]->setName(instName);
-		keyByName[instName] = ID;
-		DAGNode *node = DAGVertices[ID];
-		ID++;
+			std::string operatorName = genNameForValue(inst);
 
-		return node;
+			if ( !isNamePresent(operatorName) )
+			{
+				operatorNode = addVertex(inst, operatorName);
+				addOperands(inst, operatorNode);
+			}
+
+		}
 	}
 
-	void addVertex(llvm::Value *value, llvm::Instruction *inst, std::string name)
+	void addOperands(llvm::Instruction *inst, DAGNode *parentNode)
 	{
-		DAGVertices[ID] = new DAGNode(inst, value, ID);
+		/// Add operands
+		// llvm::Value could be an instruction or const value
+		llvm::Value *firstValue, *secondValue;
+		firstValue = inst->getOperand(0);
+		if ( hasTwoOperands(inst) )
+		{
+			secondValue = inst->getOperand(1);
+			addOperand(firstValue, parentNode); //first
+			addOperand(secondValue, parentNode); //second
+		}
+		else
+		{
+			addOperand(firstValue, parentNode);
+		}
+	}
+
+	void addOperand(llvm::Value *value, DAGNode* parentNode)
+	{
+		DAGNode *valueNode;
+
+		std::string valueName;
+		if ( value->hasName() )
+			valueName = value->getName();
+		else
+			valueName = genNameForValue(value);
+
+
+		if ( !isNamePresent(valueName) )
+			addVertex(value, valueName);
+
+
+		valueNode = DAGVertices[keyByName[valueName]];
+		addEdge(parentNode, valueNode);
+	}
+
+	DAGNode* addVertex(llvm::Value *value, std::string name)
+	{
+		DAGVertices[ID] = new DAGNode(value, ID);
 		DAGVertices[ID]->setName(name);
 
 		keyByName[name] = ID;
 		ID++;
+
+		return DAGVertices[keyByName[name]];
 	}
 
-	void addOperand(llvm::Value *value, llvm::Instruction *inst, DAGNode* instNode)
+	std::string genNameForValue(llvm::Value *value)
 	{
-		DAGNode *operandNode;
-		std::string name;
+		std::string operatorName;
 		if ( isa<Instruction>(value) )
-			name = value->getName();
-		else
-			name = getNewName(value);
-
-		if ( !isNamePresent(name) )
-			addVertex(value, inst, name);
-		else
-			resetNameCount(value); //revert count used in genName()
-
-		operandNode = DAGVertices[keyByName[name]];
-		addEdge(instNode, operandNode);
-	}
-
-	std::string getNewName(llvm::Value *target)
-	{
-		if ( target->hasName() )
-			return target->getName();
-		else
-			return genName();
-	}
-
-	std::string genLoadInstName(Instruction *inst)
-	{
-		std::string instName;
-		if ( isa<LoadInst>(inst) )
 		{
-			llvm::LoadInst *loadInst = cast<LoadInst>(inst);
-			instName = loadInst->getPointerOperand()->getName();
-			return "load_" + instName;
+			auto inst = cast<Instruction>(value);
+			if ( isa<StoreInst>(inst) )
+			{
+				operatorName = inst->getOperand(1)->getName();
+				operatorName = "store_" + operatorName;
+				// outs() << "storeName = " << operatorName << "\n";
+			}
+			if ( isa<LoadInst>(inst) )
+			{
+				operatorName = inst->getOperand(0)->getName();
+				operatorName = "load_" + operatorName;
+				// outs() << " loadName = " << operatorName << "\n";
+			}
 		}
-		if ( isa<StoreInst>(inst) )
-			return "StoreInst";
-
-		return "<not a load>";
+		else
+		{
+			operatorName = genName();
+			// outs() << " genName = " << operatorName << "\n";
+		}
+		return operatorName;
 	}
 
 	std::string genName()
 	{
 		NameCount++;
 		return "val_" + std::to_string(NameCount);
-	}
-
-	void resetNameCount(llvm::Value *target)
-	{
-		if ( !target->hasName() )
-			NameCount--;
 	}
 	
 	bool isNamePresent(std::string name)
@@ -276,6 +220,14 @@ private:
 			return false;
 	}
 
+	bool isReturn(llvm::Instruction *inst)
+	{
+		if (inst->getOpcode() == Instruction::Ret)
+			return true;
+		else
+			return false;
+	}
+
 public:
 	void collectAdjNodes()
 	{
@@ -287,17 +239,20 @@ public:
 		}
 	}
 
-	void createVDG()
+	void createDG()
 	{
 		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
-		vdgBuilder = new VDGBuilder(DAGVertices, ID);
-		vdgBuilder->createVDG();
+		dgBuilder = new DGBuilder(DAGVertices, ID);
+		dgBuilder->createDG();
+
+		// dgBuilder->createVDG();
 	}
 
 	void fini()
 	{
 		collectAdjNodes();
-		createVDG();
+		createDG();
+		// createVDG();
 	}
 
 	void print()
@@ -319,7 +274,7 @@ public:
 	void printDependencyGraph()
 	{
 		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
-		vdgBuilder->printVDG();
+		dgBuilder->printDG();
 	}
 	
 

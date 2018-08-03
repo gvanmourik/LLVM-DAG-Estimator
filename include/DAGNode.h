@@ -24,29 +24,27 @@ private:
 
 public:
 	DAGNode() : Inst(nullptr), opcode(0), ID(-1), valueOnlyNode(false) {}
-	DAGNode(llvm::Instruction *inst, int id) : Inst(inst)
+	DAGNode(llvm::Value *value, int id)
 	{
-		opcode = inst->getOpcode();
+		if ( isa<Instruction>(value) && !isa<AllocaInst>(value) )
+		{
+			Inst = cast<Instruction>(value);
+			opcode = Inst->getOpcode();
+			valueOnlyNode = false;
+			Val = nullptr;
+		}
+		else
+		{
+			Inst = nullptr;
+			opcode = 0; //invalid opcode indicating value-only node
+			valueOnlyNode = true;
+			Val = value;
+		}
 		ID = id;
-		valueOnlyNode = false;
-		Val = nullptr;
 		left = nullptr;
 		right = nullptr;
 	}
-	DAGNode(llvm::Instruction *inst, llvm::Value *value, int id) : Inst(inst)
-	{
-		opcode = 0; //invalid opcode indicating value-only node
-		ID = id;
-		valueOnlyNode = true;
-		Val = value;
-		left = nullptr;
-		right = nullptr;
-	}
-	~DAGNode() 
-	{
-		delete left;
-		delete right;
-	}
+	~DAGNode() {}
 
 	const char* getOpcodeName() 
 	{ 

@@ -73,12 +73,12 @@ public:
 		// outs() << "FunctionInfoPass...\n";
 		// builder->printDependencyGraph();
 		builder->print();
-		auto VDG = builder->getVDG();
-		VDG.lock();
-		VDG.print();
-		analysis.width = VDG.getWidth();
-		analysis.depth = VDG.getDepth();
-		VDG.unlock();
+		auto DG = builder->getDG();
+		DG.lock();
+		DG.print();
+		analysis.width = DG.getWidth();
+		analysis.depth = DG.getDepth();
+		DG.unlock();
 
 	}
 

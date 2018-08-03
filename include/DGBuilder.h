@@ -1,28 +1,28 @@
 #ifndef VDG_BUILDER_H
 #define VDG_BUILDER_H
 
-#include <queue>
+#include <deque>
 #include "DepNode.h"
 #include "DAGNode.h"
 
 
-class VariableDependencyGraph 
+class DependencyGraph 
 {
-friend class VDGBuilder;
+friend class DGBuilder;
 private:
 	DepVertexList DependenceVertices;
 	DepNameList keyByName;
 	int ID;
-	bool VDGIsLocked;
+	bool DGIsLocked;
 
 public:
-	VariableDependencyGraph(): ID(0), VDGIsLocked(false) {}
-	~VariableDependencyGraph() {}
+	DependencyGraph(): ID(0), DGIsLocked(false) {}
+	~DependencyGraph() {}
 
-	void unlock() { VDGIsLocked = false; }
-	void lock() { VDGIsLocked = true; }
+	void unlock() { DGIsLocked = false; }
+	void lock() { DGIsLocked = true; }
 	
-	bool isVDGLocked() { return VDGIsLocked; }
+	bool isLocked() { return DGIsLocked; }
 	int getNodeCount() { return ID; }
 	int getWidth() { return findWidth(); }
 	int getDepth() { return findDepth(); }
@@ -62,14 +62,14 @@ private:
 	/// TRAVERSAL
 	int findWidth()
 	{
-		assert( VDGIsLocked && 
-				"Variable dependence graph(VDG) has not been locked! Do so with lock()");
+		assert( DGIsLocked && 
+				"Dependence graph(DG) has not been locked! Do so with lock()");
 		DepNode *root = findDepRoot();
 		if ( root == nullptr )
 			return 0;
 
-		std::queue<DepNode*> wavefront;
-		wavefront.push(root);
+		std::deque<DepNode*> wavefront;
+		wavefront.push_back(root);
 
 		int maxWidth = 1; // to avoid 1st assignment in while
 		int width = 0;
@@ -78,11 +78,12 @@ private:
 		while ( !wavefront.empty() )
 		{
 			width = wavefront.size();
+			// width = wavefrontVarWidth(wavefront);
 			if ( maxWidth < width )
 				maxWidth = width;
 
 			selector = wavefront.front();
-			wavefront.pop();
+			wavefront.pop_front();
 
 			if ( selector->hasDependents() )
 			{
@@ -91,7 +92,7 @@ private:
 				{
 					if ( iter->second->hasNotBeenVisited() )
 					{
-						wavefront.push(iter->second);
+						wavefront.push_back(iter->second);
 						iter->second->markAsVisited();
 					}
 				}
@@ -100,10 +101,24 @@ private:
 		return maxWidth;
 	}
 
+	// int wavefrontVarWidth(std::deque<DepNode*> &wavefront) const
+	// {
+	// 	int variableCount = 0;
+	// 	for (auto node=wavefront.begin(); node!=wavefront.end(); ++node)
+	// 	{
+	// 		if ( !(*node)->isAnOperator() )
+	// 		{
+	// 			outs() << (*node)->getName() 
+	// 			variableCount++;
+	// 		}
+	// 	}
+	// 	return variableCount;
+	// }
+
 	int findDepth()
 	{
-		assert( VDGIsLocked && 
-				"Variable dependence graph(VDG) has not been locked! Do so with lock()");
+		assert( DGIsLocked && 
+				"Dependence graph(DG) has not been locked! Do so with lock()");
 		DepNode *root = findDepRoot();
 		if ( root == nullptr )
 			return 0;
@@ -142,8 +157,8 @@ public:
 
 	void print()
 	{
-		assert( VDGIsLocked && 
-				"Variable dependence graph(VDG) has not been locked! Do so with lock()");
+		assert( DGIsLocked && 
+				"Dependence graph(DG) has not been locked! Do so with lock()");
 		outs() << "\nDependency Nodes:\n";
 		for (int i = 0; i < ID; ++i)
 		{
@@ -157,35 +172,55 @@ public:
 };
 
 
-class VDGBuilder
+class DGBuilder
 {
 private:
-	VariableDependencyGraph VDG;
+	DependencyGraph DG;
+	DependencyGraph VDG; //variable dependence graph
+	// DependencyGraph ODG;
 	DAGVertexList DAGVertices;
 	const int DAGNodeCount;
 
 
 public:
-	VDGBuilder(DAGVertexList &DAGVertices, int DAGNodeCount) :
+	DGBuilder(DAGVertexList &DAGVertices, int DAGNodeCount) :
 		DAGVertices(DAGVertices), DAGNodeCount(DAGNodeCount) {}
-	~VDGBuilder() {}
+	~DGBuilder() {}
 
-	void clearVDG() { VDG.clear(); }
-	void createVDG()
+	void clearDG() { DG.clear(); }
+	void createDG()
 	{
+		assert( !DG.isLocked() && 
+				"Dependence graph(DG) is locked! No changes can be made until it is unlocked.");
 		for (int i = 0; i < DAGNodeCount; ++i)
 		{
 			traverseDAGNode(DAGVertices[i]);
 		}
 	}
 
-	VariableDependencyGraph getVDG() 
+	DependencyGraph getDG() 
+	{
+		DG.lock();
+		auto DG_copy = DG;
+		DG.unlock();
+		return DG_copy;
+	}
+
+	DependencyGraph getVDG() 
 	{
 		VDG.lock();
 		auto VDG_copy = VDG;
 		VDG.unlock();
 		return VDG_copy;
 	}
+
+	// DependencyGraph getDG() 
+	// {
+	// 	DG.lock();
+	// 	auto DG_copy = DG;
+	// 	DG.unlock();
+	// 	return DG_copy;
+	// }
 
 
 private:
@@ -211,6 +246,7 @@ private:
 			// Add primaryOperand
 			DAGNode *nodeSelector = node->getRight();
 			const bool isOperator = true;
+			outs() << "adding primaryOperand Node = " << node->getName() << "\n";
 			DepNode* primaryOperand = addDep(nodeSelector, nullptr, !isOperator);
 
 			// Add the list of ops on which the primary operator depends
@@ -229,7 +265,6 @@ private:
 		const bool isOperator = true;
 		if ( node->isValueOnlyNode() )
 		{
-			// outs() << "adding Node = " << node->getName() << "\n";
 			/// Base case
 			addDep(node, primaryOperand, !isOperator);
 		}
@@ -240,6 +275,7 @@ private:
 		}
 		else
 		{
+			outs() << "adding binary operator Node = " << node->getName() << "\n";
 			/// Binary operator case
 			DepNode* Operator = addDep(node, primaryOperand, isOperator);
 
@@ -269,8 +305,8 @@ private:
 			name = findValueNode(node);
 
 		/// Check whether that op is already present as a dependency
-		if ( VDG.isNamePresent(name) )
-			op = VDG.getDepNodeByName(name);
+		if ( DG.isNamePresent(name) )
+			op = DG.getDepNodeByName(name);
 		else
 			op = newDepNode(name, opcodeName, isOperator);
 
@@ -281,6 +317,8 @@ private:
 
 		/// Add dependency to the parent node
 		parentNode->addOp(op);
+		outs() << "\tadding Node = " << node->getName() << " --> ";
+		outs() << parentNode->getName() << "\n";
 		return op; // adding a member
 	}
 
@@ -296,12 +334,12 @@ private:
 
 	DepNode* newDepNode(std::string name, std::string opcodeName, bool isOperator)
 	{
-		DepNode* node = new DepNode(name, VDG.getNodeCount(), opcodeName, isOperator);
-		VDG.setDepNode(node, name);
+		DepNode* node = new DepNode(name, DG.getNodeCount(), opcodeName, isOperator);
+		DG.setDepNode(node, name);
 		return node;
 	}
 
-	// bool mergeVDG(VariableDependencyGraph &VDG_source)
+	// bool mergeVDG(DependencyGraph &VDG_source)
 	// {
 	// 	/// If source is empty, VDG remains unchanged
 	// 	if ( VDG_source.empty() )
@@ -322,7 +360,7 @@ private:
 
 	// }
 
-	// bool getFirstMatch(VariableDependencyGraph &VDG_source, DepNode *VDG_ptr, DepNode* VDG_source_ptr)
+	// bool getFirstMatch(DependencyGraph &VDG_source, DepNode *VDG_ptr, DepNode* VDG_source_ptr)
 	// {
 	// 	std::string name;
 	// 	for (int id = 0; id < VDG_source.getNodeCount(); ++id)
@@ -337,10 +375,51 @@ private:
 	// 	}
 	// 	return false;
 	// }
+	
 
 public:
 
-	void printVDG() 
+	// void createVDG()
+	// {
+	// 	// assert( DG.isLocked() && 
+	// 	// 		"Dependence graph(DG) has not been locked! Do so with lock()");
+	// 	//traverse DG
+	// 	// Recursively add, each op/successor
+	// 	DG.markAllUnvisited();
+	
+	// 	DepNode* DGRoot = DG.findDepRoot();
+	// 	if ( DGRoot->isAnOperator() )
+	// 		DGRoot = findNextValueNode();
+		
+	// 	DepNode* VDGRoot = DGRoot;
+	// 	VDG.setDepNode( VDGRoot, VDGRoot->getName() )
+
+		 
+	// }
+
+	// DepNode* findNextValueNode(DepNode *node)
+	// {
+	// 	if ( !node->isAnOperator() && node->hasNotBeenVisited() )
+	// 	{
+	// 		node->markAsVisited();
+	// 		return node;
+	// 	}
+	// 	else
+	// 	{
+	// 		auto successors = node->getOps();
+	// 		for (auto successor=successors.begin() : successors)
+	// 			findNextValueNode(successor);
+	// 	}
+	// }
+
+	void printDG() 
+	{
+		DG.lock();
+		DG.print();
+		DG.unlock();
+	}
+
+	void printVDG()
 	{
 		VDG.lock();
 		VDG.print();

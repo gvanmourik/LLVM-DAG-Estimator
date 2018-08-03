@@ -46,6 +46,11 @@ public:
 	void setID(int id) { ID = id; }
 	void markAsVisited() { visited = true; }
 	void setAsDependent() { isDependent = true; }
+	// void markAllUnvisited()
+	// {
+	// 	for (auto op=Ops.begin() : Ops)
+	// 		op.visited = false;
+	// }
 
 	void addOp(DepNode *opNode) 
 	{ 
