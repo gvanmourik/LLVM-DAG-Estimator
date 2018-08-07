@@ -32,8 +32,8 @@ public:
 	/// Helper function
 	void gatherAnalysis(Function &function, FunctionAnalysisInfo &analysis, FunctionAnalysisManager &FAM)
 	{
-		DAGBuilder *builder = new DAGBuilder();
-		builder->init();
+		DAGBuilder *DAG_builder = new DAGBuilder();
+		DAG_builder->init();
 
 		for (auto blockIter=function.begin(); blockIter!=function.end(); ++blockIter)
 		{
@@ -44,7 +44,7 @@ public:
 				Instruction *inst = &*instIter;
 				analysis.instCount++;
 				auto opCode = inst->getOpcode();
-				builder->add(inst);
+				DAG_builder->add(inst);
 
 				if ( opCode == Instruction::Call )
 				{
@@ -68,17 +68,19 @@ public:
 			analysis.bbCount++;
 		}
 
-		builder->lock();
-		builder->fini();
+		DAG_builder->lock();
+		DAG_builder->fini();
 		// outs() << "FunctionInfoPass...\n";
 		// builder->printDependencyGraph();
-		builder->print();
-		auto DG = builder->getDG();
-		DG.lock();
-		DG.print();
-		analysis.width = DG.getWidth();
-		analysis.depth = DG.getDepth();
-		DG.unlock();
+		// DAG_builder->print();
+		auto DG_builder = DAG_builder->getDGBuilder();
+		// DG_builder->createVDG();
+		// auto VDG = DG_builder->getVDG();
+		// VDG.lock();
+		// VDG.print();
+		analysis.width = DG_builder->getVDGWidth();
+		analysis.depth = DG_builder->getVDGDepth();
+		// VDG.unlock();
 
 	}
 

@@ -25,10 +25,10 @@ public:
 	~DAGBuilder() {}
 
 	void lock() { DAGIsLocked = true; }
-	DependencyGraph getDG() 
+	DGBuilder* getDGBuilder() 
 	{ 
 		assert( dgBuilder != nullptr && "DGBuilder has not been set. Use createDG()");
-		return dgBuilder->getDG();
+		return dgBuilder;
 	}
 
 	void init()
@@ -243,9 +243,9 @@ public:
 	{
 		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
 		dgBuilder = new DGBuilder(DAGVertices, ID);
+		
 		dgBuilder->createDG();
-
-		// dgBuilder->createVDG();
+		dgBuilder->createVDG();
 	}
 
 	void fini()

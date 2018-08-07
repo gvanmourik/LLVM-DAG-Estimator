@@ -21,16 +21,37 @@ private:
 	DepNameList opsKeyByName;
 	bool isDependent;
 	bool visited;
+	int edgeCount;
 
 public:
-	DepNode() : opCount(0), isOperator(false), isDependent(false), visited(false) {}
+	DepNode() : opCount(0), isOperator(false), isDependent(false), visited(false), edgeCount(0) {} 
 	DepNode(std::string name, int id, std::string opcodeName, bool isOperator) : 
 		name(name), ID(id), opCount(0), isOperator(isOperator), 
 		opcodeName(opcodeName), isDependent(false), visited(false) {}
+	DepNode(const DepNode &old)
+	{
+		name = old.name;
+		ID = old.ID;
+		opCount = old.opCount;
+		isOperator = old.isOperator;
+		opcodeName = old.opcodeName;
+		DepNode* op;
+		for (auto op_pair : old.Ops)
+		{
+			op = op_pair.second;
+			Ops[op_pair.first] = new DepNode(*op);
+		}
+		opsKeyByName = old.opsKeyByName;
+		isDependent = old.isDependent;
+		visited = old.visited;
+	}
 	~DepNode() 
 	{
-		for (auto iter=Ops.begin(); iter!=Ops.end(); ++iter)
-			delete iter->second;
+		if ( hasDependents() )
+		{
+			for (auto op_pair : Ops)
+				delete op_pair.second;
+		}
 	}
 
 	bool hasNotBeenVisited() { return !visited; }
@@ -40,17 +61,24 @@ public:
 	std::string getName() { return name; }
 	std::string getOpcodeName() { return opcodeName; }
 	int getID() { return ID; }
-	DepNodeList getOps() { return Ops; }
+	int getEdgeCount() { return edgeCount; }
+	DepNodeList& getOps() { return Ops; } 
 	DepNode* getDependent(const std::string &name) { return Ops[opsKeyByName[name]]; }
 
 	void setID(int id) { ID = id; }
+	void setName(std::string nm) { name = nm; }
 	void markAsVisited() { visited = true; }
+	void markAsUnvisited() { visited = false; }
 	void setAsDependent() { isDependent = true; }
-	// void markAllUnvisited()
-	// {
-	// 	for (auto op=Ops.begin() : Ops)
-	// 		op.visited = false;
-	// }
+	void incrementEdgeCount() { edgeCount++; }
+	void decrementEdgeCount() { edgeCount--; }
+	
+	void resetOps() 
+	{
+		opCount = 0;
+		Ops.clear();
+		opsKeyByName.clear(); 
+	}
 
 	void addOp(DepNode *opNode) 
 	{ 
@@ -59,10 +87,50 @@ public:
 			int id = opNode->getID();
 			Ops[opCount] = opNode; 
 			Ops[opCount]->setID(id);
-			opsKeyByName[opNode->getName()] = id;
+			Ops[opCount]->setName( opNode->getName() );
+			opsKeyByName[opNode->getName()] = opCount;
 			opNode->setAsDependent();
 			opCount++;
 		}
+	}
+
+	void updateOp(DepNode* opNode)
+	{
+		Ops[opsKeyByName[opNode->getName()]] = opNode;
+	}
+
+	void removeOps(bool operators=true)
+	{
+		if ( operators )
+		{
+			DepNode *op;
+			for (auto op_pair : Ops)
+			{
+				op = op_pair.second;
+				if ( op->isAnOperator() )
+				{
+					removeOp(op);
+				}
+			}
+		}
+		else
+		{
+			DepNode *op;
+			for (auto op_pair : Ops)
+			{
+				op = op_pair.second;
+				if ( !op->isAnOperator() )
+				{
+					removeOp(op);
+				}
+			}
+		}	
+	}
+
+	void removeOp(DepNode *opNode)
+	{
+		opCount--;
+		Ops.erase( opsKeyByName[opNode->getName()] );
 	}
 
 	bool isDependentPresent(const std::string &name)
@@ -77,17 +145,14 @@ public:
 	{
 		outs() << "\t    Name: ";
 		if (isOperator)
-		{
 			outs() << opcodeName << " ";
-			// outs() << " (ID: " << ID << ")";
-		}	
 		outs() << name;
 
 		if ( hasDependents() )
 		{
 			outs() << "\n\t Members: ";
-			for (auto iter=Ops.begin(); iter!=Ops.end(); ++iter)
-				outs() << "DepNode" << iter->second->getID() << " ";
+			for (auto op_pair : Ops)
+				outs() << "DepNode" << op_pair.second->getID() << " ";
 		}
 		outs() << "\n";
 	}
