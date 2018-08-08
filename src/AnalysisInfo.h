@@ -26,19 +26,19 @@ class BaseAnalysisInfo
 
 		void printAnalysis()
 		{
-			outs() << "\t       instCount = " << instCount << "\n";
-			outs() << "\t         bbCount = " << bbCount << "\n";
-			outs() << "\t       readCount = " << readCount << "\n";
-			outs() << "\t      writeCount = " << writeCount << "\n";
+			llvm::outs() << "\t       instCount = " << instCount << "\n";
+			llvm::outs() << "\t         bbCount = " << bbCount << "\n";
+			llvm::outs() << "\t       readCount = " << readCount << "\n";
+			llvm::outs() << "\t      writeCount = " << writeCount << "\n";
 			if (varDepth != 0)
 			{
-				outs() << "\t  Variable Width = " << varWidth << "\n";
-				outs() << "\t  Variable Depth = " << varDepth << "\n";
+				llvm::outs() << "\t  Variable Width = " << varWidth << "\n";
+				llvm::outs() << "\t  Variable Depth = " << varDepth << "\n";
 			}
 			// if (opDepth != 0)
 			// {
-				outs() << "\t  Operator Width = " << opWidth << "\n";
-				outs() << "\t  Operator Depth = " << opDepth << "\n";
+			// 	llvm::outs() << "\t  Operator Width = " << opWidth << "\n";
+			// 	llvm::outs() << "\t  Operator Depth = " << opDepth << "\n";
 			// }
 		}
 

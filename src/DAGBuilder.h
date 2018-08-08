@@ -251,7 +251,7 @@ public:
 	void print()
 	{
 		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
-		outs() << "\nDAG Nodes:\n";
+		llvm::outs() << "\nDAG Nodes:\n";
 		DAGNode *DAG_vertex;
 		for (int i = 0; i < ID; ++i)
 		{
