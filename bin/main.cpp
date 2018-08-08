@@ -55,22 +55,28 @@ int main(int argc, char* argv[])
       llvm::Function& f = *iter;
       if (fxnName.empty()){ //no specific request
         runEstimatorAnalysis(f, llvmOptLevel);
-      } else if (fxnName == f.getName()) {
+      } 
+      else if (fxnName == f.getName()) {
         runEstimatorAnalysis(f, llvmOptLevel);
       }
+    }
+    if (!fxnName.empty()) {
+      std::cerr << fxnName << " not found in module" << std::endl;
     }
   }
 
   if (builtinTest >= 0){
     llvm::IRBuilder<> builder(context);
     llvm::Function* f;
+    llvm::Function* callee;
     auto module = llvm::make_unique<llvm::Module>("TestModule", context);
     switch(builtinTest){
       case 1:
         f = generateTest1(context, builder, module.get(), iters);
         break;
       case 2:
-        f = generateTest2(context, builder, module.get(), iters, nullptr);
+        callee = generateTest1(context, builder, module.get(), iters);
+        f = generateTest2(context, builder, module.get(), iters, callee);
         break;
       case 3:
         f = generateTest3(context, builder, module.get(), iters);
