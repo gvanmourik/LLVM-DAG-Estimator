@@ -7,6 +7,13 @@ Open-source supercomputing, possibly using "Silicon Compilers" are the way of th
 For certain codes, 
 For large codes with hundreds of numerically intensive functions, a new question will need to be efficiently answered: is my function a good candidate for custom acceleration or should I leave it to a general purpose processor? Laid out on an FPGA or custom accelerator, what area - how much width (how many registers/logic blocks operating in parallel) and how much depth (how many steps in the pipeline) do I need to implement the algorithm?
 
+## Building and Running
+The code uses a standard CMake build system. The only prerequisite is LLVM >= 6. The build systems uses the LLVM CMake package to configure. In order to use, configure with:
+
+````
+cmake ${path_to_source} -DLLVM_dir=${path_to_lib_cmake_llvm}
+````
+
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 Under the terms of Contract DE-NA0003525 with NTESS,
