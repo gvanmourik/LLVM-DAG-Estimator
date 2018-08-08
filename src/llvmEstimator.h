@@ -5,7 +5,7 @@
  * @param optLevel A char ('0', '1', '2', '3', 's', 'z') defining the opt level
  * @return An LLVM enum for the desired optimization
  */
-llvm::PassBuilder::OptimizationLevel getOptLevel(char optLevel);
+llvm::PassBuilder::OptimizationLevel getOptLevel(int optLevel);
 
 llvm::ExecutionEngine *buildExecutionEngine(std::unique_ptr<llvm::Module> &module);
 llvm::TargetMachine *buildTargetMachine();

@@ -1,8 +1,9 @@
 #include <LLVMHeaders.h>
 #include "FunctionInfoPass.h"
 
-llvm::PassBuilder::OptimizationLevel getOptLevel(char optLevel)
+llvm::PassBuilder::OptimizationLevel getOptLevel(int optLevel_int)
 {
+  char optLevel = '0' + optLevel_int;
   switch (optLevel){
     case '1':
       return llvm::PassBuilder::O1;
@@ -13,7 +14,7 @@ llvm::PassBuilder::OptimizationLevel getOptLevel(char optLevel)
     case 's':
       return llvm::PassBuilder::Os;
     case 'z':
-      return llvm::PassBuilder::Os;
+      return llvm::PassBuilder::Oz;
     default:
       std::cerr << "Got invalid opt level " << optLevel << " - defaulting to 2" << std::endl;
       return llvm::PassBuilder::O2;
@@ -25,8 +26,8 @@ llvm::FunctionAnalysisManager
 runDefaultOptimization(llvm::Function& f, llvm::PassBuilder::OptimizationLevel optLevel)
 {
 	/// Function analysis and pass managers
-	bool DebugPM = true;
-	bool DebugAM = true;
+	bool DebugPM = false;
+	bool DebugAM = false;
 
   llvm::PassBuilder passBuilder;
 
@@ -40,29 +41,18 @@ runDefaultOptimization(llvm::Function& f, llvm::PassBuilder::OptimizationLevel o
     llvm::PassBuilder::ThinLTOPhase::None,
 	 	DebugPM);
 
-	/// Manually register the proxies used in the pipeline
-	// FAM->registerPass([&]{ return LoopAnalysisManagerFunctionProxy(LAM); });
-	// LAM->registerPass([&]{ return FunctionAnalysisManagerLoopProxy(FAM); });
+  /// Register the passes used in the simplification pipeline
 	passBuilder.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
-	/// Use the below method to register all added transform passes rather than 
-	/// passing in each individual pass as a lambda to register that pass.
-	/// [ example: FAM->registerPass([&]{ return SROA(); }); ]
-	// passBuilder.registerFunctionAnalyses(FAM);
-	// passBuilder.registerLoopAnalyses(LAM);
-
 	/// Custom analysis passes
-	// FAM->registerPass([&]{ return LoopInfoAnalysisPass(); });
   FAM.registerPass([&]{ return FunctionInfoPass(); });
 	// MAM->registerPass([&]{ return ModuleInfoPass(FAM); });
 
-	// passBuilder.registerModuleAnalyses(MAM);
 	passBuilder.registerFunctionAnalyses(FAM);
 	passBuilder.registerLoopAnalyses(LAM);
 
-  // llvm::outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //print before
-  // FPM.run(f, FAM);
-  // llvm::outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //print after
+  // llvm::outs() << f;
+  FPM.run(f, FAM);
 
   return FAM;
 }
