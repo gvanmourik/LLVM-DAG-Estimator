@@ -18,14 +18,16 @@ int main(int argc, char* argv[])
 
   int builtinTest = -1;
   int iters = 5;
+
+  CLI::App app{"LLVM Estimator"};
+  app.add_option("--opt", optLevel, "the load balancer type to use");
+  app.add_option("--cpp", cppFname, "A C++ file to generate IR from");
+  app.add_option("--ir", irFname, "An IR file to read in");
+  app.add_option("--builtin", builtinTest, "The number of the built-in test to run");
+  app.add_option("--fxn", fxnName, "The name of the function in the IR file to analyze");
+  app.add_option("--iters,-i", iters, "The number of iterations for buildint tests 1-3");
+  
   if (argc > 1){
-    CLI::App app{"LLVM Estimator"};
-    app.add_option("--opt", optLevel, "the load balancer type to use");
-    app.add_option("--cpp", cppFname, "A C++ file to generate IR from");
-    app.add_option("--ir", irFname, "An IR file to read in");
-    app.add_option("--builtin", builtinTest, "The number of the built-in test to run");
-    app.add_option("--fxn", fxnName, "The name of the function in the IR file to analyze");
-    app.add_option("--iters,-i", iters, "The number of iterations for buildint tests 1-3");
     try {
       app.parse(argc, argv);
     } catch (const CLI::ParseError &e) {
@@ -82,6 +84,7 @@ int main(int argc, char* argv[])
   }
 
   if (!ranTest){
+    std::cerr << app.help() << std::endl;
     std::cerr << "No IR, C++, or built-in test specified" << std::endl;
     return 1;
   }

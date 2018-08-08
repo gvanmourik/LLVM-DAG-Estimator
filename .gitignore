@@ -8,6 +8,7 @@
 for_loop_tracker
 
 ## Directories
+build/
 images/
 genIR/
 
