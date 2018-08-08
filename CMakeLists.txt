@@ -15,5 +15,6 @@ set (LLVMEstimator_VERSION_MAJOR 0)
 set (LLVMEstimator_VERSION_MINOR 1)
 
 add_subdirectory(src)
+add_subdirectory(bin)
 
 

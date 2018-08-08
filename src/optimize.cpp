@@ -1,27 +1,28 @@
 #include <LLVMHeaders.h>
 #include "FunctionInfoPass.h"
 
-llvm::PassBuilder::OptimizationLevel setOptLevel(std::string &optLevelString)
+llvm::PassBuilder::OptimizationLevel getOptLevel(char optLevel)
 {
-	if (optLevelString == "O1"){
-    return llvm::PassBuilder::O1;
-  } else if (optLevelString == "O2") {
-    return llvm::PassBuilder::O2;
-  } else if (optLevelString == "O3") {
-    return llvm::PassBuilder::O3;
-  } else if (optLevelString == "Os") {
-    return llvm::PassBuilder::Os;
-  } else if (optLevelString == "Oz") {
-    return llvm::PassBuilder::Oz;
-  } else {
-    llvm::errs() << "Error: Not a prescribed optimization level. Setting to the default O2 level.\n";
-    optLevelString = "O2";
-    return llvm::PassBuilder::O2;
-	}
+  switch (optLevel){
+    case '1':
+      return llvm::PassBuilder::O1;
+    case '2':
+      return llvm::PassBuilder::O2;
+    case '3':
+      return llvm::PassBuilder::O3;
+    case 's':
+      return llvm::PassBuilder::Os;
+    case 'z':
+      return llvm::PassBuilder::Os;
+    default:
+      std::cerr << "Got invalid opt level " << optLevel << " - defaulting to 2" << std::endl;
+      return llvm::PassBuilder::O2;
+  }
 }
 
 
-void runDefaultOptimization(llvm::Function* f, llvm::PassBuilder::OptimizationLevel optLevel)
+llvm::FunctionAnalysisManager
+runDefaultOptimization(llvm::Function& f, llvm::PassBuilder::OptimizationLevel optLevel)
 {
 	/// Function analysis and pass managers
 	bool DebugPM = false;
@@ -59,7 +60,9 @@ void runDefaultOptimization(llvm::Function* f, llvm::PassBuilder::OptimizationLe
 	passBuilder.registerLoopAnalyses(LAM);
 
   // llvm::outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //print before
-  FPM.run(*f, FAM);
+  FPM.run(f, FAM);
   // llvm::outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //print after
+
+  return FAM;
 }
 

@@ -14,12 +14,25 @@ add_definitions(${LLVM_DEFINITIONS})
 
 # Find the libraries that correspond to the LLVM components
 # that we wish to use
-llvm_map_components_to_libnames(llvm_libs support core irreader)
+llvm_map_components_to_libnames(llvm_libs
+  support
+  core
+  irreader
+  x86asmparser
+  x86asmprinter
+  x86codegen
+  x86desc
+  x86disassembler
+  x86info
+  x86utils
+  mcjit
+  passes
+)
 execute_process(COMMAND ${LLVM_DIR}/../../../bin/llvm-config --cxxflags 
                 OUTPUT_VARIABLE proc_output)
 string(REPLACE " " ";" inherited_cxx_flags ${proc_output})
-
-#main.cpp
+list(REMOVE_ITEM inherited_cxx_flags "-fno-exceptions")
+list(REMOVE_ITEM inherited_cxx_flags "-fno-rtti")
 
 set(SOURCES
 FunctionInfoPass.cpp
