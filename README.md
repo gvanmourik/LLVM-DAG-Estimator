@@ -1,5 +1,5 @@
 ![SST](http://sst-simulator.org/img/sst-logo-small.png)
-![LLVM](http://llvm.org/img/DragonMedium.png)
+![LLVM](http://llvm.org/img/DragonSmall.png)
 
 # LLVM DAG Estimator
 Open-source supercomputing, possibly using "Silicon Compilers" are the way of the future as Dennard scaling has stopped and Moore's Law pushes its limits. Pushing performance means moving away from general purpose CPUs to custom accelerators designed to perform a specific purpose as quickly as possible with the minimum possible power consumption.
