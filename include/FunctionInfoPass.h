@@ -70,17 +70,10 @@ public:
 
 		DAG_builder->lock();
 		DAG_builder->fini();
-		// outs() << "FunctionInfoPass...\n";
-		// builder->printDependencyGraph();
-		// DAG_builder->print();
+		DAG_builder->print();
 		auto DG_builder = DAG_builder->getDGBuilder();
-		// DG_builder->createVDG();
-		// auto VDG = DG_builder->getVDG();
-		// VDG.lock();
-		// VDG.print();
 		analysis.width = DG_builder->getVDGWidth();
 		analysis.depth = DG_builder->getVDGDepth();
-		// VDG.unlock();
 
 	}
 

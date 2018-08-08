@@ -14,128 +14,128 @@ class DepNode {
 private:
 	std::string name;
 	int ID;
-	int opCount;
+	int successorCount;
 	bool isOperator;
 	std::string opcodeName;
-	DepNodeList Ops;
-	DepNameList opsKeyByName;
-	bool isDependent;
+	DepNodeList Successors;
+	DepNameList keyByName;
+	bool isSuccessor;
 	bool visited;
 	int edgeCount;
 
 public:
-	DepNode() : opCount(0), isOperator(false), isDependent(false), visited(false), edgeCount(0) {} 
+	DepNode() : successorCount(0), isOperator(false), isSuccessor(false), visited(false), edgeCount(0) {} 
 	DepNode(std::string name, int id, std::string opcodeName, bool isOperator) : 
-		name(name), ID(id), opCount(0), isOperator(isOperator), 
-		opcodeName(opcodeName), isDependent(false), visited(false) {}
+		name(name), ID(id), successorCount(0), isOperator(isOperator), 
+		opcodeName(opcodeName), isSuccessor(false), visited(false) {}
 	DepNode(const DepNode &old)
 	{
 		name = old.name;
 		ID = old.ID;
-		opCount = old.opCount;
+		successorCount = old.successorCount;
 		isOperator = old.isOperator;
 		opcodeName = old.opcodeName;
-		DepNode* op;
-		for (auto op_pair : old.Ops)
+		DepNode* successor;
+		for (auto successor_pair : old.Successors)
 		{
-			op = op_pair.second;
-			Ops[op_pair.first] = new DepNode(*op);
+			successor = successor_pair.second;
+			Successors[successor_pair.first] = new DepNode(*successor);
 		}
-		opsKeyByName = old.opsKeyByName;
-		isDependent = old.isDependent;
+		keyByName = old.keyByName;
+		isSuccessor = old.isSuccessor;
 		visited = old.visited;
 	}
 	~DepNode() 
 	{
-		if ( hasDependents() )
+		if ( hasSuccessors() )
 		{
-			for (auto op_pair : Ops)
-				delete op_pair.second;
+			for (auto successor_pair : Successors)
+				delete successor_pair.second;
 		}
 	}
 
 	bool hasNotBeenVisited() { return !visited; }
 	bool isAnOperator() { return isOperator; }
-	bool hasDependents() { return !Ops.empty(); }
-	bool isADependent() { return isDependent; }
+	bool hasSuccessors() { return !Successors.empty(); }
+	bool isASuccessor() { return isSuccessor; }
 	std::string getName() { return name; }
 	std::string getOpcodeName() { return opcodeName; }
 	int getID() { return ID; }
 	int getEdgeCount() { return edgeCount; }
-	DepNodeList& getOps() { return Ops; } 
-	DepNode* getDependent(const std::string &name) { return Ops[opsKeyByName[name]]; }
+	DepNodeList& getOps() { return Successors; } 
+	DepNode* getSuccessor(const std::string &name) { return Successors[keyByName[name]]; }
 
 	void setID(int id) { ID = id; }
 	void setName(std::string nm) { name = nm; }
 	void markAsVisited() { visited = true; }
 	void markAsUnvisited() { visited = false; }
-	void setAsDependent() { isDependent = true; }
+	void setAsSuccessor() { isSuccessor = true; }
 	void incrementEdgeCount() { edgeCount++; }
 	void decrementEdgeCount() { edgeCount--; }
 	
-	void resetOps() 
+	void resetSuccessors() 
 	{
-		opCount = 0;
-		Ops.clear();
-		opsKeyByName.clear(); 
+		successorCount = 0;
+		Successors.clear();
+		keyByName.clear(); 
 	}
 
-	void addOp(DepNode *opNode) 
+	void addSuccessor(DepNode *opNode) 
 	{ 
-		if ( !isDependentPresent(opNode->getName()) )
+		if ( !isSuccessorPresent(opNode->getName()) )
 		{
 			int id = opNode->getID();
-			Ops[opCount] = opNode; 
-			Ops[opCount]->setID(id);
-			Ops[opCount]->setName( opNode->getName() );
-			opsKeyByName[opNode->getName()] = opCount;
-			opNode->setAsDependent();
-			opCount++;
+			Successors[successorCount] = opNode; 
+			Successors[successorCount]->setID(id);
+			Successors[successorCount]->setName( opNode->getName() );
+			keyByName[opNode->getName()] = successorCount;
+			opNode->setAsSuccessor();
+			successorCount++;
 		}
 	}
 
-	void updateOp(DepNode* opNode)
+	void updateSuccessors(DepNode* opNode)
 	{
-		Ops[opsKeyByName[opNode->getName()]] = opNode;
+		Successors[keyByName[opNode->getName()]] = opNode;
 	}
 
-	void removeOps(bool operators=true)
+	void removeSuccessors(bool operators=true)
 	{
 		if ( operators )
 		{
-			DepNode *op;
-			for (auto op_pair : Ops)
+			DepNode *successor;
+			for (auto successor_pair : Successors)
 			{
-				op = op_pair.second;
-				if ( op->isAnOperator() )
+				successor = successor_pair.second;
+				if ( successor->isAnOperator() )
 				{
-					removeOp(op);
+					removeSuccessor(successor);
 				}
 			}
 		}
 		else
 		{
-			DepNode *op;
-			for (auto op_pair : Ops)
+			DepNode *successor;
+			for (auto successor_pair : Successors)
 			{
-				op = op_pair.second;
-				if ( !op->isAnOperator() )
+				successor = successor_pair.second;
+				if ( !successor->isAnOperator() )
 				{
-					removeOp(op);
+					removeSuccessor(successor);
 				}
 			}
 		}	
 	}
 
-	void removeOp(DepNode *opNode)
+	void removeSuccessor(DepNode *opNode)
 	{
-		opCount--;
-		Ops.erase( opsKeyByName[opNode->getName()] );
+		successorCount--;
+		Successors.erase( keyByName[opNode->getName()] );
 	}
 
-	bool isDependentPresent(const std::string &name)
+	bool isSuccessorPresent(const std::string &name)
 	{
-		if( opsKeyByName.count(name) == 0 )
+		if( keyByName.count(name) == 0 )
 			return false;
 		else
 			return true;
@@ -148,11 +148,11 @@ public:
 			outs() << opcodeName << " ";
 		outs() << name;
 
-		if ( hasDependents() )
+		if ( hasSuccessors() )
 		{
 			outs() << "\n\t Members: ";
-			for (auto op_pair : Ops)
-				outs() << "DepNode" << op_pair.second->getID() << " ";
+			for (auto successor_pair : Successors)
+				outs() << "DepNode" << successor_pair.second->getID() << " ";
 		}
 		outs() << "\n";
 	}
