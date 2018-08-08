@@ -1,4 +1,4 @@
-CLANG_HOME = /Users/gvanmou/Programs/source/llvm-clang-6.0.0/build
+CLANG_HOME = /Users/jjwilke/Programs/install/llvm6/dbg
 PROGRAM_NAME = for_loop_tracker
 
 CC := clang++

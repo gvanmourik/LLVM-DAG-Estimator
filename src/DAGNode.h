@@ -4,8 +4,6 @@
 #include <map>
 #include <llvm/IR/Instruction.h>
 
-// using namespace llvm;
-
 class DAGNode;
 typedef std::map<int, DAGNode*> DAGNodeList;
 
@@ -26,9 +24,9 @@ public:
 	DAGNode() : Inst(nullptr), opcode(0), ID(-1), valueOnlyNode(false) {}
 	DAGNode(llvm::Value *value, int id)
 	{
-		if ( isa<Instruction>(value) && !isa<AllocaInst>(value) )
+    if (llvm::isa<llvm::Instruction>(value) && !llvm::isa<llvm::AllocaInst>(value) )
 		{
-			Inst = cast<Instruction>(value);
+      Inst = llvm::cast<llvm::Instruction>(value);
 			opcode = Inst->getOpcode();
 			valueOnlyNode = false;
 			Val = nullptr;
@@ -55,7 +53,7 @@ public:
 	}
 
 	int getID() { return ID; }
-	Value* getValue() { return Val; }
+  llvm::Value* getValue() { return Val; }
 	DAGNode* getLeft() { return left; }
 	DAGNode* getRight() { return right; }
 	DAGNode* getAdjNode(int ID) { return adjNodes[ID]; }
@@ -105,18 +103,18 @@ public:
 	{
 		if ( !valueOnlyNode )
 		{
-			outs() << "\tInstruction: " << getOpcodeName() << " (opcode=" << opcode << ")";
-			outs() << " Name = " << Name;
+      llvm::outs() << "\tInstruction: " << getOpcodeName() << " (opcode=" << opcode << ")";
+      llvm::outs() << " Name = " << Name;
 		}
 		else
 		{
-			outs() << "\t      Value: ";
+      llvm::outs() << "\t      Value: ";
 			if ( Val->hasName() )
-				outs() << Val->getName();
+        llvm::outs() << Val->getName();
 			else
-				outs() << Name;
+        llvm::outs() << Name;
 		}
-		outs() << " (ID: " << ID << ")\n";
+    llvm::outs() << " (ID: " << ID << ")\n";
 		if ( left != nullptr )
 			left->print();
 		if ( right != nullptr )
@@ -127,8 +125,8 @@ public:
 	{
 		for (auto iter=Inst->op_begin(); iter!=Inst->op_end(); ++iter)
 		{
-			outs() << "\t Count" << iter->getOperandNo() << ": " << iter->get()->getValueID();
-			outs() << " (" << Inst->getOpcodeName( iter->get()->getValueID() ) << ")\n";
+      llvm::outs() << "\t Count" << iter->getOperandNo() << ": " << iter->get()->getValueID();
+      llvm::outs() << " (" << Inst->getOpcodeName( iter->get()->getValueID() ) << ")\n";
 		}
 	}
 
@@ -144,9 +142,9 @@ public:
 	{
 		for (auto iter=adjNodes.begin(); iter!=adjNodes.end(); ++iter)
 		{
-			outs() << "Node" << iter->second->ID << " ";
+      llvm::outs() << "Node" << iter->second->ID << " ";
 		}
-		outs() << "\n";
+    llvm::outs() << "\n";
 	}
 
 };

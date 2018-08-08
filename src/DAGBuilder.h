@@ -145,16 +145,16 @@ private:
 	std::string genNameForValue(llvm::Value *value)
 	{
 		std::string operatorName;
-		if ( isa<Instruction>(value) )
+    if (llvm::isa<llvm::Instruction>(value) )
 		{
-			auto inst = cast<Instruction>(value);
-			if ( isa<StoreInst>(inst) )
+      auto inst = llvm::cast<llvm::Instruction>(value);
+      if (llvm::isa<llvm::StoreInst>(inst) )
 			{
 				operatorName = inst->getOperand(1)->getName();
 				operatorName = "store_" + operatorName;
 				// outs() << "storeName = " << operatorName << "\n";
 			}
-			if ( isa<LoadInst>(inst) )
+      if (llvm::isa<llvm::LoadInst>(inst) )
 			{
 				operatorName = inst->getOperand(0)->getName();
 				operatorName = "load_" + operatorName;
@@ -206,7 +206,7 @@ private:
 
 	bool isBranch(llvm::Instruction *inst)
 	{
-		if (inst->getOpcode() == Instruction::Br)
+    if (inst->getOpcode() == llvm::Instruction::Br)
 			return true;
 		else
 			return false;
@@ -214,7 +214,7 @@ private:
 
 	bool isAlloca(llvm::Instruction *inst)
 	{
-		if (inst->getOpcode() == Instruction::Alloca)
+    if (inst->getOpcode() == llvm::Instruction::Alloca)
 			return true;
 		else
 			return false;
@@ -222,7 +222,7 @@ private:
 
 	bool isReturn(llvm::Instruction *inst)
 	{
-		if (inst->getOpcode() == Instruction::Ret)
+    if (inst->getOpcode() == llvm::Instruction::Ret)
 			return true;
 		else
 			return false;
@@ -258,17 +258,17 @@ public:
 	void print()
 	{
 		assert( DAGIsLocked && "DAG has not been locked! Do so with lock()");
-		outs() << "\nDAG Nodes:\n";
+    llvm::outs() << "\nDAG Nodes:\n";
 		for (int i = 0; i < ID; ++i)
 		{
-			outs() << "-------------------------------------------------------------\n";
-			outs() << "Node" << i << ":\n";
+      llvm::outs() << "-------------------------------------------------------------\n";
+      llvm::outs() << "Node" << i << ":\n";
 			DAGVertices[i]->print();
-			outs() << "       Adjacent Nodes: ";
+      llvm::outs() << "       Adjacent Nodes: ";
 			DAGVertices[i]->printAdjNodeIDs();
-			outs() << "-------------------------------------------------------------\n";
+      llvm::outs() << "-------------------------------------------------------------\n";
 		}
-		outs() << "\n";
+    llvm::outs() << "\n";
 	}
 
 	void printDependencyGraph()

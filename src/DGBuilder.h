@@ -159,15 +159,15 @@ public:
 	{
 		assert( DGIsLocked && 
 				"Dependence graph(DG) has not been locked! Do so with lock()");
-		outs() << "\nDependency Nodes:\n";
+    llvm::outs() << "\nDependency Nodes:\n";
 		for (int i = 0; i < ID; ++i)
 		{
-			outs() << "---------------------------------------------------\n";
-			outs() << "DepNode" << i << ":\n";
+      llvm::outs() << "---------------------------------------------------\n";
+      llvm::outs() << "DepNode" << i << ":\n";
 			DependenceVertices[i]->print();
-			outs() << "---------------------------------------------------\n";
+      llvm::outs() << "---------------------------------------------------\n";
 		}
-		outs() << "\n";
+    llvm::outs() << "\n";
 	}
 };
 
@@ -229,7 +229,7 @@ private:
 		if ( node != nullptr )
 		{	
 			auto opCode = node->getOpcode();
-			if ( opCode == Instruction::Store )
+      if ( opCode == llvm::Instruction::Store )
 			{
 				buildDependenceUnit(node);
 			}
@@ -241,12 +241,12 @@ private:
 	void buildDependenceUnit(DAGNode *node)
 	{
 		auto opCode = node->getOpcode();
-		if ( opCode == Instruction::Store )
+    if ( opCode == llvm::Instruction::Store )
 		{
 			// Add primaryOperand
 			DAGNode *nodeSelector = node->getRight();
 			const bool isOperator = true;
-			outs() << "adding primaryOperand Node = " << node->getName() << "\n";
+      llvm::outs() << "adding primaryOperand Node = " << node->getName() << "\n";
 			DepNode* primaryOperand = addDep(nodeSelector, nullptr, !isOperator);
 
 			// Add the list of ops on which the primary operator depends
@@ -268,14 +268,14 @@ private:
 			/// Base case
 			addDep(node, primaryOperand, !isOperator);
 		}
-		else if ( node->getOpcode() == Instruction::Load || node->getOpcode() == Instruction::Store )
+    else if ( node->getOpcode() == llvm::Instruction::Load || node->getOpcode() == llvm::Instruction::Store )
 		{
 			/// Collect Value of the load (node->right == nullptr)
 			addDepWrapper(node->getLeft(), primaryOperand);
 		}
 		else
 		{
-			outs() << "adding binary operator Node = " << node->getName() << "\n";
+      llvm::outs() << "adding binary operator Node = " << node->getName() << "\n";
 			/// Binary operator case
 			DepNode* Operator = addDep(node, primaryOperand, isOperator);
 
@@ -290,7 +290,7 @@ private:
 		if ( node->getValue() != nullptr )
 		{
 			auto typeID = node->getValue()->getType()->getTypeID();
-			if ( typeID != Type::PointerTyID )
+      if ( typeID != llvm::Type::PointerTyID )
 				return nullptr;
 		}
 
@@ -317,8 +317,8 @@ private:
 
 		/// Add dependency to the parent node
 		parentNode->addOp(op);
-		outs() << "\tadding Node = " << node->getName() << " --> ";
-		outs() << parentNode->getName() << "\n";
+    llvm::outs() << "\tadding Node = " << node->getName() << " --> ";
+    llvm::outs() << parentNode->getName() << "\n";
 		return op; // adding a member
 	}
 

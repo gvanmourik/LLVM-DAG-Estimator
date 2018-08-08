@@ -75,21 +75,21 @@ public:
 
 	void print()
 	{
-		outs() << "\t    Name: ";
+    llvm::outs() << "\t    Name: ";
 		if (isOperator)
 		{
-			outs() << opcodeName << " ";
+      llvm::outs() << opcodeName << " ";
 			// outs() << " (ID: " << ID << ")";
 		}	
-		outs() << name;
+    llvm::outs() << name;
 
 		if ( hasDependents() )
 		{
-			outs() << "\n\t Members: ";
+      llvm::outs() << "\n\t Members: ";
 			for (auto iter=Ops.begin(); iter!=Ops.end(); ++iter)
-				outs() << "DepNode" << iter->second->getID() << " ";
+        llvm::outs() << "DepNode" << iter->second->getID() << " ";
 		}
-		outs() << "\n";
+    llvm::outs() << "\n";
 	}
 
 };

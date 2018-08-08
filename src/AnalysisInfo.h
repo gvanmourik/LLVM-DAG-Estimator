@@ -1,10 +1,10 @@
 #ifndef ANALYSIS_INFO_H
 #define ANALYSIS_INFO_H
 
-using namespace llvm;
+#include <LLVMHeaders.h>
 
 class FunctionAnalysisInfo;
-typedef std::map<Function*, FunctionAnalysisInfo*> FunctionAnalysis_t;
+typedef std::map<llvm::Function*, FunctionAnalysisInfo*> FunctionAnalysis_t;
 
 
 class BaseAnalysisInfo
@@ -24,12 +24,12 @@ class BaseAnalysisInfo
 
 		void printAnalysis()
 		{
-			outs() << "\t    instCount = " << instCount << "\n";
-			outs() << "\t      bbCount = " << bbCount << "\n";
-			outs() << "\t    readCount = " << readCount << "\n";
-			outs() << "\t   writeCount = " << writeCount << "\n";
-			outs() << "\t        Width = " << width << "\n";
-			outs() << "\t        Depth = " << depth << "\n";
+      llvm::outs() << "\t    instCount = " << instCount << "\n";
+      llvm::outs() << "\t      bbCount = " << bbCount << "\n";
+      llvm::outs() << "\t    readCount = " << readCount << "\n";
+      llvm::outs() << "\t   writeCount = " << writeCount << "\n";
+      llvm::outs() << "\t        Width = " << width << "\n";
+      llvm::outs() << "\t        Depth = " << depth << "\n";
 		}
 
 		BaseAnalysisInfo& operator=(const BaseAnalysisInfo &FA) 
@@ -49,30 +49,30 @@ class BaseAnalysisInfo
 class FunctionAnalysisInfo : public BaseAnalysisInfo
 {
 	private:
-		Function *function;
+    llvm::Function *function;
 
 	public:
 		FunctionAnalysis_t InnerFA;
 
 		FunctionAnalysisInfo() : function(nullptr) {}
-		FunctionAnalysisInfo(Function *function) : function(function) {}
+    FunctionAnalysisInfo(llvm::Function *function) : function(function) {}
 		~FunctionAnalysisInfo(){}
 
 		void printAnalysis()
 		{
 			if (function!=nullptr)
-				outs() << "\t     Function = " << function->getName() << "()\n";
+        llvm::outs() << "\t     Function = " << function->getName() << "()\n";
 			BaseAnalysisInfo::printAnalysis();
 
 			if ( !InnerFA.empty() )
 			{
-				outs() << "\t----------------------------------------\n";
-				outs() << "\tInnerFA: (FunctionAnalysisInfo)\n";
+        llvm::outs() << "\t----------------------------------------\n";
+        llvm::outs() << "\tInnerFA: (FunctionAnalysisInfo)\n";
 				for (auto i=InnerFA.begin(); i != InnerFA.end(); ++i)
 				{
 					i->second->printAnalysis();
 				}
-				outs() << "\t----------------------------------------\n";
+        llvm::outs() << "\t----------------------------------------\n";
 			}
 		}
 
@@ -88,30 +88,30 @@ class FunctionAnalysisInfo : public BaseAnalysisInfo
 class ModuleAnalysisInfo : public BaseAnalysisInfo
 {
 	private:
-		Module *module;
+    llvm::Module *module;
 
 	public:
 		FunctionAnalysis_t FunctionAnalyses;
 
 		ModuleAnalysisInfo() {}
-		ModuleAnalysisInfo(Module *module) : module(module) {}
+    ModuleAnalysisInfo(llvm::Module *module) : module(module) {}
 		~ModuleAnalysisInfo(){}
 
 		void printAnalysis()
 		{
-			outs() << "\tModule: " << module->getName() << "()\n";
-			outs() << "\tLayout: " << module->getDataLayoutStr() << "\n";
-			outs() << "\t TargetTriple = " << module->getTargetTriple() << "\n";
-			outs() << "\t   SourceFile = " << module->getSourceFileName() << "\n";
+      llvm::outs() << "\tModule: " << module->getName() << "()\n";
+      llvm::outs() << "\tLayout: " << module->getDataLayoutStr() << "\n";
+      llvm::outs() << "\t TargetTriple = " << module->getTargetTriple() << "\n";
+      llvm::outs() << "\t   SourceFile = " << module->getSourceFileName() << "\n";
 			BaseAnalysisInfo::printAnalysis();
 
-			outs() << "----------------------------------------\n";
-			outs() << "Function: (ModuleAnalysisInfo)\n";
+      llvm::outs() << "----------------------------------------\n";
+      llvm::outs() << "Function: (ModuleAnalysisInfo)\n";
 			for (auto i=FunctionAnalyses.begin(); i != FunctionAnalyses.end(); ++i)
 			{
 				i->second->printAnalysis();
 			}
-			outs() << "----------------------------------------\n";
+      llvm::outs() << "----------------------------------------\n";
 		}
 
 		ModuleAnalysisInfo& operator=(ModuleAnalysisInfo &MA) 
