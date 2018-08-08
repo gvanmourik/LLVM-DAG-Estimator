@@ -62,7 +62,7 @@ public:
 	std::string getOpcodeName() { return opcodeName; }
 	int getID() { return ID; }
 	int getEdgeCount() { return edgeCount; }
-	DepNodeList& getOps() { return Successors; } 
+	DepNodeList& getSuccessors() { return Successors; } 
 	DepNode* getSuccessor(const std::string &name) { return Successors[keyByName[name]]; }
 
 	void setID(int id) { ID = id; }
@@ -96,7 +96,8 @@ public:
 
 	void updateSuccessors(DepNode* opNode)
 	{
-		Successors[keyByName[opNode->getName()]] = opNode;
+		if (opNode != nullptr)
+			Successors[keyByName[opNode->getName()]] = opNode;
 	}
 
 	void removeSuccessors(bool operators=true)
@@ -116,12 +117,18 @@ public:
 		else
 		{
 			DepNode *successor;
-			for (auto successor_pair : Successors)
+			outs() << "Successors.size() = " << Successors.size() << "\n";
+			for (int i=0; i<(int)Successors.size(); ++i)
 			{
-				successor = successor_pair.second;
+				outs() << "beginning of for...\n";
+				// successor = successor_pair->second;
+				successor = Successors[i];
+				// outs() << "successor = " << successor->getName() << "\n";
+				// successor->print();
 				if ( !successor->isAnOperator() )
 				{
-					removeSuccessor(successor);
+					if ( successor != nullptr )
+						removeSuccessor(successor);
 				}
 			}
 		}	
@@ -129,8 +136,10 @@ public:
 
 	void removeSuccessor(DepNode *opNode)
 	{
+		outs() << "Removing '" << opNode->getName() << "' from " << name << "\n";
 		successorCount--;
 		Successors.erase( keyByName[opNode->getName()] );
+		outs() << "after erase...\n";
 	}
 
 	bool isSuccessorPresent(const std::string &name)

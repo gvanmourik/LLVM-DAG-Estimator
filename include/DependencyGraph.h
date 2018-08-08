@@ -88,12 +88,15 @@ protected:
 		for (auto vertex_pair : DependenceVertices)
 		{
 			vertex = vertex_pair.second;
-			name = vertex->getName();
-
-			for (auto vertex_pair_inner : DependenceVertices)
+			if (vertex != nullptr)
 			{
-				if ( vertex_pair_inner.second->isSuccessorPresent(name) )
-					vertex->incrementEdgeCount();
+				name = vertex->getName();
+
+				for (auto vertex_pair_inner : DependenceVertices)
+				{
+					if ( vertex_pair_inner.second->isSuccessorPresent(name) )
+						vertex->incrementEdgeCount();
+				}
 			}
 		}
 	}
@@ -148,7 +151,7 @@ protected:
 
 			if ( selector->hasSuccessors() )
 			{
-				auto ops = selector->getOps();
+				auto ops = selector->getSuccessors();
 
 				DepNode* successor;
 				for (auto successor_pair : ops)
@@ -184,7 +187,7 @@ protected:
 
 	void depthWrapper(DepNode *node, int count, int &maxCount)
 	{
-		auto Ops = node->getOps();
+		auto Ops = node->getSuccessors();
 		if ( !node->isAnOperator() )
 			count++;
 
@@ -210,7 +213,7 @@ protected:
 
 	void removeSuccessorEdges(DepNode* parentNode, DepNode* opNode, bool operatorEdges=true)
 	{
-		auto ops = opNode->getOps();
+		auto ops = opNode->getSuccessors();
 		DepNode *successor;
 		for (auto successor_pair : ops)
 		{
@@ -259,7 +262,7 @@ protected:
 					vertex->removeSuccessors(operatorEdges);
 
 					// update successor pointers
-					auto ops = vertex->getOps();
+					auto ops = vertex->getSuccessors();
 					DepNode *successor, *updatedSuccessor;
 					for (auto successor_pair : ops)
 					{
@@ -280,12 +283,14 @@ protected:
 				else
 				{
 					// remove pointers to operators
+					outs() << "--->vertex = " << vertex->getName() << "\n";
+					vertex->print();
 					vertex->removeSuccessors(operatorEdges);
 
 					// update successor pointers
-					auto ops = vertex->getOps();
+					auto successors = vertex->getSuccessors();
 					DepNode *successor, *updatedSuccessor;
-					for (auto successor_pair : ops)
+					for (auto successor_pair : successors)
 					{
 						successor = successor_pair.second;
 						updatedSuccessor = DependenceVertices[keyByName[successor->getName()]];

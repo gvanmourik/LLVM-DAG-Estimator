@@ -45,8 +45,8 @@ public:
 			/// MERGE loop and function analysis
 
 
-		DAGBuilder *builder = new DAGBuilder();
-		builder->init();
+		DAGBuilder *DAG_builder = new DAGBuilder();
+		DAG_builder->init();
 
 		for (auto fncIter=module.begin(); fncIter!=module.end(); ++fncIter)
 		{
@@ -61,7 +61,7 @@ public:
 				for (auto instIter=BB->begin(); instIter!=BB->end(); ++instIter)
 				{
 					Instruction *inst = &*instIter;
-					builder->add(inst);
+					DAG_builder->add(inst);
 
 					switch ( inst->getOpcode() ) {
 					case (Instruction::Load):
@@ -80,13 +80,14 @@ public:
 			}
 		}
 
-		builder->lock();
-		builder->fini();
-		outs() << "ModuleInfoPass...\n";
-		// builder->print();
-		// builder->printDependencyGraph();
-		analysis.width = builder->getVarWidth();
-		analysis.depth = builder->getVarDepth();
+		DAG_builder->lock();
+		DAG_builder->fini();
+		// DAG_builder->print();
+		auto DG_builder = DAG_builder->getDGBuilder();
+		analysis.varWidth = DG_builder->getVDGWidth();
+		analysis.varDepth = DG_builder->getVDGDepth();
+		analysis.opWidth = DG_builder->getODGWidth();
+		analysis.opDepth = DG_builder->getODGDepth();
 	
 	}
 

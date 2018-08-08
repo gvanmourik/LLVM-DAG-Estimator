@@ -70,10 +70,12 @@ public:
 
 		DAG_builder->lock();
 		DAG_builder->fini();
-		DAG_builder->print();
+		// DAG_builder->print();
 		auto DG_builder = DAG_builder->getDGBuilder();
-		analysis.width = DG_builder->getVDGWidth();
-		analysis.depth = DG_builder->getVDGDepth();
+		analysis.varWidth = DG_builder->getVDGWidth();
+		analysis.varDepth = DG_builder->getVDGDepth();
+		analysis.opWidth = DG_builder->getODGWidth();
+		analysis.opDepth = DG_builder->getODGDepth();
 
 	}
 
