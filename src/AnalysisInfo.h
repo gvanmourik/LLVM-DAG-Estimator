@@ -14,22 +14,32 @@ class BaseAnalysisInfo
 		unsigned bbCount;
 		unsigned readCount;
 		unsigned writeCount;
-		int width;
-		int depth;
+		int varWidth;
+		int varDepth;
+		int opWidth;
+		int opDepth;
 
 		BaseAnalysisInfo() :
 			instCount(0), bbCount(0), readCount(0), writeCount(0), 
-			width(0), depth(0) {}
+			varWidth(0), varDepth(0), opWidth(0), opDepth(0) {}
 		~BaseAnalysisInfo(){}
 
 		void printAnalysis()
 		{
-      llvm::outs() << "\t    instCount = " << instCount << "\n";
-      llvm::outs() << "\t      bbCount = " << bbCount << "\n";
-      llvm::outs() << "\t    readCount = " << readCount << "\n";
-      llvm::outs() << "\t   writeCount = " << writeCount << "\n";
-      llvm::outs() << "\t        Width = " << width << "\n";
-      llvm::outs() << "\t        Depth = " << depth << "\n";
+			outs() << "\t       instCount = " << instCount << "\n";
+			outs() << "\t         bbCount = " << bbCount << "\n";
+			outs() << "\t       readCount = " << readCount << "\n";
+			outs() << "\t      writeCount = " << writeCount << "\n";
+			if (varDepth != 0)
+			{
+				outs() << "\t  Variable Width = " << varWidth << "\n";
+				outs() << "\t  Variable Depth = " << varDepth << "\n";
+			}
+			// if (opDepth != 0)
+			// {
+				outs() << "\t  Operator Width = " << opWidth << "\n";
+				outs() << "\t  Operator Depth = " << opDepth << "\n";
+			// }
 		}
 
 		BaseAnalysisInfo& operator=(const BaseAnalysisInfo &FA) 
@@ -38,8 +48,10 @@ class BaseAnalysisInfo
 			bbCount = FA.bbCount;
 			readCount = FA.readCount;
 			writeCount = FA.writeCount;
-			width = FA.width;
-			depth = FA.depth;
+			varWidth = FA.varWidth;
+			varDepth = FA.varDepth;
+			opWidth = FA.opWidth;
+			opDepth = FA.opDepth;
 
 			return *this;
 		}
@@ -94,24 +106,25 @@ class ModuleAnalysisInfo : public BaseAnalysisInfo
 		FunctionAnalysis_t FunctionAnalyses;
 
 		ModuleAnalysisInfo() {}
-    ModuleAnalysisInfo(llvm::Module *module) : module(module) {}
+    	ModuleAnalysisInfo(llvm::Module *module) : module(module) {}
 		~ModuleAnalysisInfo(){}
 
 		void printAnalysis()
 		{
-      llvm::outs() << "\tModule: " << module->getName() << "()\n";
-      llvm::outs() << "\tLayout: " << module->getDataLayoutStr() << "\n";
-      llvm::outs() << "\t TargetTriple = " << module->getTargetTriple() << "\n";
-      llvm::outs() << "\t   SourceFile = " << module->getSourceFileName() << "\n";
+			llvm::outs() << "----------------------------------------\n";
+			llvm::outs() << "Module: " << module->getName() << "\n";
+			llvm::outs() << "\t          Layout = " << module->getDataLayoutStr() << "\n";
+			llvm::outs() << "\t    TargetTriple = " << module->getTargetTriple() << "\n";
+			llvm::outs() << "\t      SourceFile = " << module->getSourceFileName() << "\n";
 			BaseAnalysisInfo::printAnalysis();
 
-      llvm::outs() << "----------------------------------------\n";
-      llvm::outs() << "Function: (ModuleAnalysisInfo)\n";
+      		llvm::outs() << "----------------------------------------\n";
+      		llvm::outs() << "Function: (ModuleAnalysisInfo)\n";
 			for (auto i=FunctionAnalyses.begin(); i != FunctionAnalyses.end(); ++i)
 			{
 				i->second->printAnalysis();
 			}
-      llvm::outs() << "----------------------------------------\n";
+      		llvm::outs() << "----------------------------------------\n";
 		}
 
 		ModuleAnalysisInfo& operator=(ModuleAnalysisInfo &MA) 

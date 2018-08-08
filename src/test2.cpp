@@ -23,7 +23,7 @@ llvm::Function* generateTest2(llvm::LLVMContext &context, llvm::IRBuilder<> &bui
 
 	/// EntryBB
 	builder.SetInsertPoint(EntryBB);
-  i = builder.CreateAlloca(llvm::Type::getInt32Ty(context), nullptr, "i");
+  	i = builder.CreateAlloca(llvm::Type::getInt32Ty(context), nullptr, "i");
 	builder.CreateStore(zero, i);
 	builder.CreateBr(ForEntryBB);
 
@@ -35,7 +35,8 @@ llvm::Function* generateTest2(llvm::LLVMContext &context, llvm::IRBuilder<> &bui
 
 	/// ForBodyBB
 	builder.SetInsertPoint(ForBodyBB);
-	builder.CreateCall(callee);
+	if (callee != nullptr)
+		builder.CreateCall(callee);
 	builder.CreateBr(ForIncBB);
 
 	/// ForIncBB
@@ -50,7 +51,7 @@ llvm::Function* generateTest2(llvm::LLVMContext &context, llvm::IRBuilder<> &bui
 
 	/// ExitBB
 	builder.SetInsertPoint(ExitBB);
-  llvm::ReturnInst::Create(context, ExitBB);
+  	llvm::ReturnInst::Create(context, ExitBB);
 
 
 	return TestFnc;

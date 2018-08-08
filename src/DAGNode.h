@@ -62,6 +62,7 @@ public:
 	std::string getName() { return Name; }
 	unsigned getOpcode() { return opcode; }
 	bool isValueOnlyNode() { return valueOnlyNode; }
+	bool hasAdjVertices() { return !adjNodes.empty(); }
 
 	void setAsInstNode() 
 	{ 
@@ -91,14 +92,6 @@ public:
 			return false;
 	}
 
-	bool rightIsEmpty()
-	{
-		if (right == nullptr)
-			return true;
-		else 
-			return false;
-	}
-
 	void print()
 	{
 		if ( !valueOnlyNode )
@@ -120,24 +113,7 @@ public:
 		if ( right != nullptr )
 			right->print();
 	}
-
-	void printInst()
-	{
-		for (auto iter=Inst->op_begin(); iter!=Inst->op_end(); ++iter)
-		{
-      llvm::outs() << "\t Count" << iter->getOperandNo() << ": " << iter->get()->getValueID();
-      llvm::outs() << " (" << Inst->getOpcodeName( iter->get()->getValueID() ) << ")\n";
-		}
-	}
-
-	void printAdjNodes()
-	{
-		for (auto iter=adjNodes.begin(); iter!=adjNodes.end(); ++iter)
-		{
-			iter->second->print();
-		}
-	}
-
+	
 	void printAdjNodeIDs()
 	{
 		for (auto iter=adjNodes.begin(); iter!=adjNodes.end(); ++iter)

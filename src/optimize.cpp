@@ -25,12 +25,13 @@ llvm::FunctionAnalysisManager
 runDefaultOptimization(llvm::Function& f, llvm::PassBuilder::OptimizationLevel optLevel)
 {
 	/// Function analysis and pass managers
-	bool DebugPM = false;
-	bool DebugAM = false;
+	bool DebugPM = true;
+	bool DebugAM = true;
 
   llvm::PassBuilder passBuilder;
 
   llvm::ModuleAnalysisManager MAM(DebugAM);
+  llvm::CGSCCAnalysisManager CGAM(DebugAM);
   llvm::FunctionAnalysisManager FAM(DebugAM);
   llvm::LoopAnalysisManager LAM(DebugAM);
 
@@ -42,7 +43,7 @@ runDefaultOptimization(llvm::Function& f, llvm::PassBuilder::OptimizationLevel o
 	/// Manually register the proxies used in the pipeline
 	// FAM->registerPass([&]{ return LoopAnalysisManagerFunctionProxy(LAM); });
 	// LAM->registerPass([&]{ return FunctionAnalysisManagerLoopProxy(FAM); });
-	// passBuilder.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+	passBuilder.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
 	/// Use the below method to register all added transform passes rather than 
 	/// passing in each individual pass as a lambda to register that pass.
@@ -60,7 +61,7 @@ runDefaultOptimization(llvm::Function& f, llvm::PassBuilder::OptimizationLevel o
 	passBuilder.registerLoopAnalyses(LAM);
 
   // llvm::outs() << "--------------------BEFORE-----------------------\n" << *module << "\n"; //print before
-  FPM.run(f, FAM);
+  // FPM.run(f, FAM);
   // llvm::outs() << "---------------------AFTER-----------------------\n" << *module << "\n"; //print after
 
   return FAM;

@@ -42,10 +42,10 @@ FunctionInfoPass::gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo 
 
   builder->lock();
   builder->fini();
-  builder->print();
+  // builder->print();
   auto DG = builder->getDG();
   DG.lock();
-  DG.print();
+  // DG.print();
   analysis.width = DG.getWidth();
   analysis.depth = DG.getDepth();
   DG.unlock();
