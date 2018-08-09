@@ -42,7 +42,7 @@ FunctionInfoPass::gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo 
 
   DAG_builder->lock();
   DAG_builder->fini();
-  // builder->print();
+  // DAG_builder->print();
   auto DG_builder = DAG_builder->getDGBuilder();
   analysis.varWidth = DG_builder->getVDGWidth();
   analysis.varDepth = DG_builder->getVDGDepth();
