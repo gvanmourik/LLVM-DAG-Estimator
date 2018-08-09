@@ -12,7 +12,7 @@ The code uses a standard CMake build system. The only prerequisite is LLVM >= 6.
 ````
 cmake ${path_to_source} -DLLVM_dir=${path_to_lib_cmake_llvm}
 ````
-It is recommended that a build directory is first created and then cmake called from within that directory. Following the build, an executable named "estimate" will be available in the bin directory. To print available options for the estimate tool use the following:
+It is recommended that a build directory is first created and then cmake called from within that directory. Following the build, an executable named "estimate" will be available in the bin directory. To print the available options for the estimate tool use the following:
 
 ````
 ./estimate -h
@@ -41,10 +41,10 @@ Each built-in test is summarized below.
 A simple set of assignments, placed in a for loop, to test the width and depth results of the estimate tool. The width and depth for the variables within this function will be observed in the results only if the optimization level is set to '0'. 
 
 ### Test 2
-Test 2 is a function that makes a call to the IR function generated in Test 1. The output shows the result of a simplified outer function, but the Test 1 function remains unsimplified.
+Test 2 is a function that makes a call to the IR function generated in Test 1. The output shows the result of a simplified outer function, but the inner call to the Test 1 function remains unsimplified.
 
 ### Test 3
-Test 3 contains an if-else statement nested within a for loop. Currently, the ability for the estimate tool to analyze if-statements is not yet supported with the estimate tool.
+Test 3 contains an if-else statement nested within a for loop. Currently, the ability to analyze if-statements is not yet supported with the estimate tool.
 
 ### Running the Built-In Tests
 Run the built in tests with the following command:
