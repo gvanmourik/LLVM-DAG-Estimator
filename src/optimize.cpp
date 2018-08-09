@@ -1,23 +1,24 @@
 #include <LLVMHeaders.h>
+#include <stdlib.h>
 #include "FunctionInfoPass.h"
 
-llvm::PassBuilder::OptimizationLevel getOptLevel(int optLevel_int)
+llvm::PassBuilder::OptimizationLevel getOptLevel(std::string optLevel_str)
 {
-  char optLevel = '0' + optLevel_int;
-  switch (optLevel){
-    case '1':
-      return llvm::PassBuilder::O1;
-    case '2':
-      return llvm::PassBuilder::O2;
-    case '3':
-      return llvm::PassBuilder::O3;
-    case 's':
-      return llvm::PassBuilder::Os;
-    case 'z':
+  if (optLevel_str == "0") 
+    return llvm::PassBuilder::O0;
+  else if (optLevel_str == "1")
+    return llvm::PassBuilder::O1;
+  else if (optLevel_str == "2")
+    return llvm::PassBuilder::O2;
+  else if (optLevel_str == "3")
+    return llvm::PassBuilder::O3;
+  else if (optLevel_str == "s") 
+    return llvm::PassBuilder::Os;
+  else if (optLevel_str == "z")
       return llvm::PassBuilder::Oz;
-    default:
-      std::cerr << "Got invalid opt level " << optLevel << " - defaulting to 2" << std::endl;
-      return llvm::PassBuilder::O2;
+  else {
+    std::cerr << "Got invalid opt level " << optLevel_str << " - defaulting to O2" << std::endl;
+    return llvm::PassBuilder::O2;
   }
 }
 
@@ -30,16 +31,21 @@ runDefaultOptimization(llvm::Function& f, llvm::PassBuilder::OptimizationLevel o
 	bool DebugAM = false;
 
   llvm::PassBuilder passBuilder;
+  llvm::FunctionPassManager FPM(DebugPM);
 
   llvm::ModuleAnalysisManager MAM(DebugAM);
   llvm::CGSCCAnalysisManager CGAM(DebugAM);
   llvm::FunctionAnalysisManager FAM(DebugAM);
   llvm::LoopAnalysisManager LAM(DebugAM);
 
-	auto FPM = passBuilder.buildFunctionSimplificationPipeline(
-	 	optLevel, 
+  if ( optLevel != llvm::PassBuilder::O0 )
+  {
+    FPM = passBuilder.buildFunctionSimplificationPipeline(
+    optLevel, 
     llvm::PassBuilder::ThinLTOPhase::None,
-	 	DebugPM);
+    DebugPM);
+  }
+	
 
   /// Register the passes used in the simplification pipeline
 	passBuilder.crossRegisterProxies(LAM, FAM, CGAM, MAM);
@@ -51,8 +57,9 @@ runDefaultOptimization(llvm::Function& f, llvm::PassBuilder::OptimizationLevel o
 	passBuilder.registerFunctionAnalyses(FAM);
 	passBuilder.registerLoopAnalyses(LAM);
 
-  // llvm::outs() << f;
-  FPM.run(f, FAM);
+  if ( optLevel != llvm::PassBuilder::O0) {
+    FPM.run(f, FAM);
+  }
 
   return FAM;
 }
