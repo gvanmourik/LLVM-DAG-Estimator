@@ -18,7 +18,7 @@ private:
 
 
 public:
-	DAGBuilder() : NameCount(0), hasBeenInitialized(false) {}
+	DAGBuilder() : hasBeenInitialized(false) {}
 	~DAGBuilder() {}
 
 	void lock() { DAGIsLocked = true; }
