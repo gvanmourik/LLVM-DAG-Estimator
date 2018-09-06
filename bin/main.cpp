@@ -73,6 +73,7 @@ int main(int argc, char* argv[])
     switch(builtinTest){
       case 1:
         f = generateTest1(context, builder, module.get(), iters);
+        llvm::outs() << *module.get();
         break;
       case 2:
         callee = generateTest1(context, builder, module.get(), iters);

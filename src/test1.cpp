@@ -47,9 +47,9 @@ llvm::Function* generateTest1(llvm::LLVMContext &context, llvm::IRBuilder<> &bui
 	/// ForBodyBB
 	builder.SetInsertPoint(ForBodyBB);
 	// d = x * y + a + 3
-	xVal = builder.CreateLoad(x, "xVal");
-	yVal = builder.CreateLoad(y, "yVal");
-	aVal = builder.CreateLoad(a, "aVal");
+	xVal = builder.CreateLoad(x);
+	yVal = builder.CreateLoad(y);
+	aVal = builder.CreateLoad(a);
 	dVal = builder.CreateMul(xVal, yVal, "x*y");
 	aVal = builder.CreateAdd(aVal, three, "a+3");
 	dVal = builder.CreateAdd(dVal, aVal, "x*y+a+3");
