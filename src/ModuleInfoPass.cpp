@@ -53,7 +53,7 @@ ModuleInfoPass::gatherAnalysis(llvm::Module &module, ModuleAnalysisInfo &analysi
   }
 
   builder->lock();
-  builder->fini();
+  // builder->fini();
   llvm::outs() << "ModuleInfoPass...\n";
   // builder->print();
   // builder->printDependencyGraph();

@@ -41,13 +41,13 @@ FunctionInfoPass::gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo 
   }
 
   DAG_builder->lock();
-  DAG_builder->fini();
-  // DAG_builder->print();
-  auto DG_builder = DAG_builder->getDGBuilder();
-  analysis.varWidth = DG_builder->getVDGWidth();
-  analysis.varDepth = DG_builder->getVDGDepth();
-  analysis.opWidth = DG_builder->getODGWidth();
-  analysis.opDepth = DG_builder->getODGDepth();
+  // DAG_builder->fini();
+  DAG_builder->print();
+  // auto DG_builder = DAG_builder->getDGBuilder();
+  // analysis.varWidth = DG_builder->getVDGWidth();
+  // analysis.varDepth = DG_builder->getVDGDepth();
+  // analysis.opWidth = DG_builder->getODGWidth();
+  // analysis.opDepth = DG_builder->getODGDepth();
 
 }
 
