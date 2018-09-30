@@ -8,6 +8,7 @@ class DAGNode;
 typedef enum vertex_t{VAL,INST} vertex_t;
 typedef std::unordered_map<DAGNode*, DAGNode*> DAGVertexList;
 typedef std::unordered_map<llvm::Value*, DAGNode*> DAGValueList;
+// typedef std::unordered_map<std::string, DAGNode*> DAGNameList;
 // typedef std::map<int, DAGNode*> DAGNodeList;
 
 class DAGNode {
@@ -110,12 +111,26 @@ public:
 		return false;
 	}
 
+	// void removeSuccessors() { Successors.clear(); }
+
 	bool isSuccessorPresent(DAGNode* successor)
 	{
 		if (Successors.count(successor) != 0)
 			return true;
 		else
 			return false;
+	}
+
+	bool isaInst()
+	{
+		if (type == INST)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
 	}
 
 	// int getID() { return ID; }

@@ -10,6 +10,7 @@ private:
 	// DGBuilder *DG_Builder; //dependence graph builder
 	DAGVertexList Vertices;
 	DAGValueList VertexValues;
+	DAGValueList StoredValues;
 	// DAGNameList keyByName;
 	// int ID;
 	// int NameCount;
@@ -20,6 +21,12 @@ private:
 public:
 	DAGBuilder() : hasBeenInitialized(false) {}
 	~DAGBuilder() {}
+
+	DAGVertexList retrieveDAG() 
+	{
+		assert( DAGIsLocked && "DAGBuilder has not been locked! Do so before retrieving the DAG.");
+		return Vertices;
+	}
 
 	void lock() { DAGIsLocked = true; }
 	// DGBuilder* getDGBuilder() 
@@ -48,6 +55,8 @@ public:
 				return false;
 			if ( isBranch(inst) )
 				return false;
+			// if ( isAlloca(inst) )
+			// 	return false;
 			if ( isReturn(inst) )
 				return false;
 
@@ -130,7 +139,17 @@ private:
 	
 	bool addInstruction(llvm::Value* value, DAGNode* parentNode=nullptr)
 	{    
+		auto inst = llvm::cast<llvm::Instruction>(value);
+		if ( llvm::isa<llvm::AllocaInst>(inst) )
+			return false;
+		if ( llvm::isa<llvm::StoreInst>(inst) )
+		{
+			addStoreInst(value, parentNode);
+			return true;
+		}
+		
 		DAGNode *valNode, *instNode;
+
 		if ( !isValuePresent(value) )
 		{
 			valNode = addVertex(value, VAL);
@@ -151,35 +170,104 @@ private:
 			addEdge(parentNode, valNode);
 		}
 
-		auto inst = llvm::cast<llvm::Instruction>(value);
-
-		/// If inst is an alloc, do NOT traverse the operands
-		if ( llvm::isa<llvm::AllocaInst>(inst) )
-			return false;
+		// /// If inst is an alloc, do NOT traverse the operands
+		// if ( llvm::isa<llvm::AllocaInst>(inst) )
+		// 	return false;
 
 		/// Generate specific names for stores and loads
 		std::string targetVarName;
-		if ( llvm::isa<llvm::StoreInst>(inst) )
-		{
-			targetVarName = inst->getOperand(1)->getName();
-			targetVarName = "store_" + targetVarName;
-		}
+		// if ( llvm::isa<llvm::StoreInst>(inst) )
+		// {
+		// 	targetVarName = inst->getOperand(1)->getName();
+		// 	// StoreList[targetVarName] = instNode; ////
+		// 	targetVarName = "store_" + targetVarName;
+
+
+		// 	// test
+		// 	// inst->getOperand(0)->dump();
+		// 	// inst->getOperand(1)->dump();
+		// 	// llvm::outs() << "Operand[0]->getValue = " << *(inst->getOperand(0)) << "\n";
+		// 	// llvm::outs() << "Operand[1]->getValue = " << *(inst->getOperand(1)) << "\n";
+		// 	// llvm::outs() << "Operand [1] = " << inst->getOperand(1) << "\n";
+		// }
 		if (llvm::isa<llvm::LoadInst>(inst) )
 		{
 			targetVarName = inst->getOperand(0)->getName();
+			// if ( isStorePresent(targetVarName) ) ////
+			// {
+			// 	// get value node for the load
+			// 	// move to the inst node for the load (as load/stores value nodes only have one successor)
+			// 	auto loadInstNode = StoreList[targetVarName];
+
+			// 	// replace the edge to the load_ inst with an edge to the store_ inst
+
+			// }
+
 			targetVarName = "load_" + targetVarName;
 		}
 		instNode->setConstName(targetVarName);
 		valNode->setConstName(targetVarName);
 
 		/// Recursively traverse each operand
+		llvm::outs() << "Instruction: ";
+		inst->dump();
 		for (auto& operand : inst->operands())
 		{
+			llvm::outs() << "Operand: ";
+			operand->dump();
 			addOperand(operand, instNode);
 		}
 		return true;
 	}
 
+	bool addStoreInst(llvm::Value* value, DAGNode* parentNode)
+	{
+		auto inst = llvm::cast<llvm::Instruction>(value);
+		// if ( llvm::isa<llvm::AllocaInst>(inst) )
+		// 	return false;
+		
+		DAGNode *valNode, *instNode;
+
+		// Is this check really necessary for store??
+		if ( !isValuePresent(value) )
+		{
+			valNode = addVertex(value, VAL);
+			instNode = addVertex(value, INST);
+			instNode->setValueNode(valNode);
+			addEdge(valNode, instNode);
+		}
+		else
+		{
+			auto key = VertexValues[value];
+			instNode = Vertices[key];
+			valNode = instNode->getValueNode();
+		}
+
+		// Name the store inst
+		std::string targetVarName = inst->getOperand(1)->getName();
+		targetVarName = "store_" + targetVarName;
+		instNode->setConstName(targetVarName);
+		valNode->setConstName(targetVarName);
+
+		// Connect the newly created value node to the parent node
+		if ( parentNode != nullptr )
+			addEdge(parentNode, valNode);
+
+		//the difference is in the addition of the operands
+		auto saveToVar = inst->getOperand(1);
+		auto storedValue = inst->getOperand(0);
+
+		DAGNode* saveToVarNode = addVertex(saveToVar, VAL);
+		addEdge(instNode, saveToVarNode);
+		addEdge(saveToVarNode, addVertex(saveToVar, INST));
+
+		addOperand(storedValue, saveToVarNode);
+		
+
+		return true;
+	}
+
+	////// IF parentNode == ????
 	void addOperand(llvm::Value* operand, DAGNode* parentNode)
 	{
 		DAGNode* valNode;
@@ -193,7 +281,8 @@ private:
 			if ( !isValuePresent(operand) )
 			{			
 				std::string constValName;
-				if ( llvm::isa<llvm::ConstantInt>(operand) )
+				if ( llvm::isa<llvm::ConstantInt>(operand)
+					&& !llvm::isa<llvm::AllocaInst>(operand) )
 				{
 					auto CI = llvm::cast<llvm::ConstantInt>(operand);
 					if ( CI->getBitWidth() <= 64 )
@@ -205,7 +294,7 @@ private:
 				}
 				if ( llvm::isa<llvm::ConstantFP>(operand) )
 				{
-
+					// add stuff...
 				}
 
 				valNode = addVertex(operand, VAL);
@@ -233,6 +322,14 @@ private:
 	{
 		parentNode->addSuccessor(successor);
 	}
+
+	// void replaceLoadEdge(DAGNode* loadNode, DAGNode* storeNode)
+	// {
+	// 	// Destroys all the the load_ instruction and consecutive nodes of that load_ inst
+	// 	loadNode->removeSuccessors();
+	// 	// Add edge to the store_ instruction
+	// 	loadNode->addEdge(loadNode, storeNode);
+	// }
 
 
 	// std::string genValueName(llvm::Value *value)
@@ -268,6 +365,14 @@ private:
 		else
 			return true;
 	}
+
+	// bool isStorePresent(std::string key)
+	// {
+	// 	if( StoreList.count(key) == 0 )
+	// 		return false;
+	// 	else
+	// 		return true;
+	// }
 			
 	// bool hasTwoOperands(llvm::Instruction *inst)
 	// {
