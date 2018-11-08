@@ -5,7 +5,7 @@
 #include <llvm/IR/Instruction.h>
 
 class DAGNode;
-typedef enum vertex_t{VAL,INST} vertex_t;
+typedef enum vertex_t{VAL,INST, CONST} vertex_t;
 typedef std::unordered_map<DAGNode*, DAGNode*> DAGVertexList;
 typedef std::unordered_map<llvm::Value*, DAGNode*> DAGValueList;
 // typedef std::unordered_map<std::string, DAGNode*> DAGNameList;
@@ -46,6 +46,7 @@ public:
 	int getOpWidth() { return opWidth; }
 	int getOpDepth() { return opDepth; }
 	vertex_t getType() { return type; }
+	llvm::Value* getContent() { return content; }
 	llvm::Type* getContentTy() { return content->getType(); }
 	std::string getConstName() { return constName; }
 	DAGVertexList getSuccessors() { return Successors; }
@@ -77,7 +78,10 @@ public:
 			if ( content->hasName() )
 				return content->getName();
 			else
+			{
+				content->dump();
 				return "<no name>"; 
+			}
 		}
 	}
 
@@ -93,7 +97,7 @@ public:
 
 	bool addSuccessor(DAGNode* successor)
 	{
-		if ( !isSuccessorPresent(successor) ) 
+		if ( successor != nullptr || !isSuccessorPresent(successor) ) 
 		{
 			Successors[successor] = successor;
 			return true;
@@ -103,12 +107,45 @@ public:
 
 	bool removeSuccessor(DAGNode* successor)
 	{
-		if ( isSuccessorPresent(successor) ) 
+		if ( successor != nullptr || isSuccessorPresent(successor) ) 
 		{
 			Successors.erase(successor);
 			return true;
 		}
 		return false;
+	}
+
+	bool hasStoredValue()
+	{
+		DAGNode* successor;
+		for (auto successor_pair : Successors)
+		{
+			successor = successor_pair.second;
+			auto inst = successor->getContent();
+			if ( successor->getType() == INST && 
+				 llvm::isa<llvm::StoreInst>(inst) )
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	DAGNode* getStoredValueNode()
+	{
+		DAGNode* successor;
+		DAGNode* storedValueNode;
+		for (auto successor_pair : Successors)
+		{
+			successor = successor_pair.second;
+			auto inst = successor->getContent();
+			if ( successor->getType() == INST && 
+				 llvm::isa<llvm::StoreInst>(inst) )
+			{
+				storedValueNode = successor;
+			}
+		}
+		return storedValueNode;
 	}
 
 	// void removeSuccessors() { Successors.clear(); }
@@ -175,6 +212,10 @@ public:
 
 	void print()
 	{
+		// printf("printing node...\n");
+		// content->dump();
+
+
 		if (type == INST)
 		{
 			auto inst = llvm::cast<llvm::Instruction>(content);
