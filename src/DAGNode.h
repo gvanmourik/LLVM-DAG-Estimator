@@ -165,8 +165,8 @@ public:
 		if (type == INST)
 		{
 			auto inst = llvm::cast<llvm::Instruction>(llvmValue);
-      		llvm::outs() << "\tInstruction: " << inst->getOpcodeName() << " (opcode=" << inst->getOpcode() << ")";
-      		llvm::outs() << " Name = " << getName();
+      		llvm::outs() << "\tInstruction: " << inst->getOpcodeName();
+      		llvm::outs() << " (" << getName() << ")";
 		}
 		else
 		{

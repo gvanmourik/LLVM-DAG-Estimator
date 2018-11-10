@@ -169,9 +169,6 @@ private:
 				instNode->setValueNode(valNode);
 				addEdge(valNode, instNode);
 			}
-			
-
-			inst->dump();
 
 			// recursively add operands
 			addOperand(inst->getOperand(0), instNode); // left operand
