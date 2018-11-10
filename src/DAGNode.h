@@ -5,7 +5,7 @@
 #include <llvm/IR/Instruction.h>
 
 class DAGNode;
-typedef enum vertex_t{VAL,INST, CONST} vertex_t;
+typedef enum vertex_t{VAL, INST} vertex_t;
 typedef std::unordered_map<DAGNode*, DAGNode*> DAGVertexList;
 typedef std::unordered_map<llvm::Value*, DAGNode*> DAGValueList;
 // typedef std::unordered_map<std::string, DAGNode*> DAGNameList;
@@ -14,22 +14,12 @@ typedef std::unordered_map<llvm::Value*, DAGNode*> DAGValueList;
 class DAGNode {
 
 private:
-	// llvm::Instruction *Inst;
-	// std::string Name;
-	// llvm::Value *Val;
-	// unsigned opcode;
-	// int ID;
-	// bool valueOnlyNode;
-	// DAGNode *left;
-	// DAGNode *right;
-	// DAGNodeList adjNodes;
-	
 	int varWidth;
 	int varDepth;
 	int opWidth;
 	int opDepth;
 	DAGNode* valueNode;
-	llvm::Value* content; //holds either instruction or value
+	llvm::Value* llvmValue; //holds either instruction or value
 	vertex_t type;
 	std::string constName;
 	DAGVertexList Successors;
@@ -38,7 +28,7 @@ private:
 public:
 	DAGNode() : varWidth(1), varDepth(1), opWidth(1), opDepth(1), valueNode(nullptr), type(VAL) {}
 	DAGNode(llvm::Value* value, vertex_t type) : varWidth(1), varDepth(1), 
-		opWidth(1), opDepth(1), valueNode(nullptr), content(value), type(type) {}
+		opWidth(1), opDepth(1), valueNode(nullptr), llvmValue(value), type(type) {}
 	~DAGNode() {}
 
 	int getVarWidth() { return varWidth; }
@@ -46,8 +36,8 @@ public:
 	int getOpWidth() { return opWidth; }
 	int getOpDepth() { return opDepth; }
 	vertex_t getType() { return type; }
-	llvm::Value* getContent() { return content; }
-	llvm::Type* getContentTy() { return content->getType(); }
+	llvm::Value* getllvmValue() { return llvmValue; }
+	llvm::Type* getllvmValueTy() { return llvmValue->getType(); }
 	std::string getConstName() { return constName; }
 	DAGVertexList getSuccessors() { return Successors; }
 	DAGNode* getValueNode() { return valueNode; }
@@ -75,11 +65,11 @@ public:
 			return constName;
 		else
 		{
-			if ( content->hasName() )
-				return content->getName();
+			if ( llvmValue->hasName() )
+				return llvmValue->getName();
 			else
 			{
-				content->dump();
+				llvmValue->dump();
 				return "<no name>"; 
 			}
 		}
@@ -87,11 +77,11 @@ public:
 
 	bool setName(std::string name)
 	{
-		if ( content->hasName() )
+		if ( llvmValue->hasName() )
 		{
 			return false;
 		}
-		content->setName(name);
+		llvmValue->setName(name);
 		return true;
 	}
 
@@ -121,7 +111,7 @@ public:
 		for (auto successor_pair : Successors)
 		{
 			successor = successor_pair.second;
-			auto inst = successor->getContent();
+			auto inst = successor->getllvmValue();
 			if ( successor->getType() == INST && 
 				 llvm::isa<llvm::StoreInst>(inst) )
 			{
@@ -138,7 +128,7 @@ public:
 		for (auto successor_pair : Successors)
 		{
 			successor = successor_pair.second;
-			auto inst = successor->getContent();
+			auto inst = successor->getllvmValue();
 			if ( successor->getType() == INST && 
 				 llvm::isa<llvm::StoreInst>(inst) )
 			{
@@ -170,55 +160,11 @@ public:
 		}
 	}
 
-	// int getID() { return ID; }
- 	// llvm::Value* getValue() { return Val; }
-	// DAGNode* getLeft() { return left; }
-	// DAGNode* getRight() { return right; }
-	// DAGNode* getAdjNode(int ID) { return adjNodes[ID]; }
-	// DAGNodeList getAdjNodes() { return adjNodes; }
-	// llvm::Instruction* getInst() { return Inst; }
-	// std::string getName() { return Name; }
-	// unsigned getOpcode() { return opcode; }
-	// bool isValueOnlyNode() { return valueOnlyNode; }
-	// bool hasAdjVertices() { return !adjNodes.empty(); }
-
-	// void setAsInstNode() 
-	// { 
-	// 	opcode = Inst->getOpcode();
-	// 	valueOnlyNode = false;
-	// 	Val = nullptr;
-	// }
-	// void setLeft(DAGNode *assignedNode) { left = assignedNode; }
-	// void setRight(DAGNode *assignedNode) { right = assignedNode; }
-	// void setValue(llvm::Value *val) { Val = val; }
-	// void addAdjNodes(DAGNode *node) 
-	// { 
-	// 	if ( node != nullptr )
-	// 	{
-	// 		adjNodes[node->getID()] = node;
-	// 		addAdjNodes( node->getLeft() );
-	// 		addAdjNodes( node->getRight() );
-	// 	}
-	// }
-	// void setName(std::string name) { Name = name; }
-
-	// bool leftIsEmpty()
-	// {
-	// 	if (left == nullptr)
-	// 		return true;
-	// 	else 
-	// 		return false;
-	// }
-
 	void print()
 	{
-		// printf("printing node...\n");
-		// content->dump();
-
-
 		if (type == INST)
 		{
-			auto inst = llvm::cast<llvm::Instruction>(content);
+			auto inst = llvm::cast<llvm::Instruction>(llvmValue);
       		llvm::outs() << "\tInstruction: " << inst->getOpcodeName() << " (opcode=" << inst->getOpcode() << ")";
       		llvm::outs() << " Name = " << getName();
 		}
@@ -226,7 +172,7 @@ public:
 		{
       		llvm::outs() << "\t      Value: " << getName();
       	}	
-    	llvm::outs() << " (ID: " << &*content << ")\n";
+    	llvm::outs() << " (ID: " << &*llvmValue << ")\n";
 		
 		/// Recursively print each successor
 		DAGNode* successor;
