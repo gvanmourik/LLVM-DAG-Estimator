@@ -72,103 +72,25 @@ private:
 		if ( llvm::isa<llvm::CmpInst>(inst) )
 			return false;
 
-		DAGNode *valNode, *instNode;		
+		DAGNode *valNode=nullptr, *instNode=nullptr;		
 
-		///// NEW
+
 		/// Store
-		if ( llvm::isa<llvm::StoreInst>(inst) )
+		if ( llvm::isa<llvm::StoreInst>(inst) ) 
 		{
-			llvm::Value *storeInst, *storeVal, *targetVal;
-			storeInst = inst;
-			storeVal = inst->getOperand(0);
-			targetVal = inst->getOperand(1);
-			
-			// add target variable value node
-			if ( isValuePresent(targetVal) )
-			{
-				auto key = VertexByValue[targetVal];
-				valNode = Vertices[key];
-			}
-			else
-			{
-				valNode = addVertex(targetVal, VAL);
-			}
-
-			// set name
-			std::string storeValName;
-			if ( storeVal->hasName() )
-			{
-				storeValName = storeVal->getName();				
-			}
-			else
-			{
-				storeValName = getConstName(storeVal);
-			}
-			storeValName = "store_" + storeValName;
-
-			// store instructions will always have a unique ID
-			instNode = addVertex(storeInst, INST);
-			instNode->setConstName(storeValName);
-
-			// add edges
-			addEdge(valNode, instNode);
-
-			// recursively add the store value
-			addOperand(storeVal, instNode);
+			addStoreInst(valNode, instNode, inst);
 		}
 
 		/// Load (load values only have one operand, the load value)
 		else if ( llvm::isa<llvm::LoadInst>(inst) )
 		{
-			llvm::Value *loadVal, *loadInst;
-			loadInst = inst;
-			loadVal = inst->getOperand(0);
-
-			if ( isValuePresent(loadInst) )
-			{
-				auto key = VertexByValue[loadInst];
-				instNode = Vertices[key];
-				valNode = instNode->getValueNode();
-			}
-			else
-			{
-				valNode = addVertex(loadInst, VAL);
-				instNode = addVertex(loadInst, INST);
-				instNode->setValueNode(valNode);
-				addEdge(valNode, instNode);
-			}
-
-			// get name
-			std::string loadValName = loadVal->getName();
-			loadValName = "load_" + loadValName;
-
-			// set names
-			valNode->setConstName(loadValName);
-			instNode->setConstName(loadValName);
-
-			// add edge
-			addEdge(valNode, instNode);
-
-			// recursively add the load value
-			addOperand(loadVal, instNode);
+			addLoadInst(valNode, instNode, inst);
 		}
 
 		/// Other
 		else
 		{
-			if ( isValuePresent(inst) )
-			{
-				auto key = VertexByValue[inst];
-				instNode = Vertices[key];
-				valNode = instNode->getValueNode();
-			}
-			else
-			{
-				valNode = addVertex(inst, VAL);
-				instNode = addVertex(inst, INST);
-				instNode->setValueNode(valNode);
-				addEdge(valNode, instNode);
-			}
+			checkAndSet(valNode, instNode, inst);
 
 			// recursively add operands
 			addOperand(inst->getOperand(0), instNode); // left operand
@@ -182,6 +104,85 @@ private:
 		}
 		
 		return true;
+	}
+
+	void addStoreInst(DAGNode* &valNode, DAGNode* &instNode, llvm::Instruction *storeInst)
+	{
+		llvm::Value *storeVal, *targetVal;
+		storeVal = storeInst->getOperand(0);
+		targetVal = storeInst->getOperand(1);
+		
+		// add target variable value node
+		if ( isValuePresent(targetVal) )
+		{
+			auto key = VertexByValue[targetVal];
+			valNode = Vertices[key];
+		}
+		else
+		{
+			valNode = addVertex(targetVal, VAL);
+		}
+
+		// set name
+		std::string storeValName;
+		if ( storeVal->hasName() )
+		{
+			storeValName = storeVal->getName();				
+		}
+		else
+		{
+			storeValName = getConstName(storeVal);
+		}
+		storeValName = "store_" + storeValName;
+
+		// store instructions will always have a unique ID
+		instNode = addVertex(storeInst, INST);
+		instNode->setConstName(storeValName);
+
+		// add edges
+		addEdge(valNode, instNode);
+
+		// recursively add the store value
+		addOperand(storeVal, instNode);
+	}
+
+	void addLoadInst(DAGNode* &valNode, DAGNode* &instNode, llvm::Instruction *loadInst)
+	{
+		llvm::Value *loadVal;
+		loadVal = loadInst->getOperand(0);
+
+		checkAndSet(valNode, instNode, loadInst);
+
+		// get name
+		std::string loadValName = loadVal->getName();
+		loadValName = "load_" + loadValName;
+
+		// set names
+		valNode->setConstName(loadValName);
+		instNode->setConstName(loadValName);
+
+		// add edge
+		addEdge(valNode, instNode);
+
+		// recursively add the load value
+		addOperand(loadVal, instNode);
+	}
+
+	void checkAndSet(DAGNode* &valNode, DAGNode* &instNode, llvm::Value *value)
+	{
+		if ( isValuePresent(value) )
+		{
+			auto key = VertexByValue[value];
+			instNode = Vertices[key];
+			valNode = instNode->getValueNode();
+		}
+		else
+		{
+			valNode = addVertex(value, VAL);
+			instNode = addVertex(value, INST);
+			instNode->setValueNode(valNode);
+			addEdge(valNode, instNode);
+		}
 	}
 
 	void addOperand(llvm::Value* operand, DAGNode* parentNode)
@@ -264,7 +265,7 @@ private:
 
 	bool isBranch(llvm::Instruction *inst)
 	{
-    if (inst->getOpcode() == llvm::Instruction::Br)
+    	if (inst->getOpcode() == llvm::Instruction::Br)
 			return true;
 		else
 			return false;
@@ -272,7 +273,7 @@ private:
 
 	bool isAlloca(llvm::Instruction *inst)
 	{
-    if (inst->getOpcode() == llvm::Instruction::Alloca)
+    	if (inst->getOpcode() == llvm::Instruction::Alloca)
 			return true;
 		else
 			return false;
@@ -280,7 +281,7 @@ private:
 
 	bool isReturn(llvm::Instruction *inst)
 	{
-    if (inst->getOpcode() == llvm::Instruction::Ret)
+    	if (inst->getOpcode() == llvm::Instruction::Ret)
 			return true;
 		else
 			return false;

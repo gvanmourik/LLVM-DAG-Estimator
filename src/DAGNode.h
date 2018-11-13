@@ -8,8 +8,6 @@ class DAGNode;
 typedef enum vertex_t{VAL, INST} vertex_t;
 typedef std::unordered_map<DAGNode*, DAGNode*> DAGVertexList;
 typedef std::unordered_map<llvm::Value*, DAGNode*> DAGValueList;
-// typedef std::unordered_map<std::string, DAGNode*> DAGNameList;
-// typedef std::map<int, DAGNode*> DAGNodeList;
 
 class DAGNode {
 
@@ -193,5 +191,6 @@ public:
 	}
 
 };
+
 
 #endif /* DAG_NODE_H */ 
