@@ -93,6 +93,7 @@ private:
 			checkAndSet(valNode, instNode, inst);
 
 			// recursively add operands
+			inst->dump();
 			addOperand(inst->getOperand(0), instNode); // left operand
 			addOperand(inst->getOperand(1), instNode); // right operand
 		}
@@ -204,7 +205,6 @@ private:
 			{
 				std::string constValName;
 				constValName = getConstName(operand);
-
 				valNode = addVertex(operand, VAL);
 				valNode->setConstName(constValName);
 			}

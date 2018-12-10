@@ -16,7 +16,6 @@ FunctionInfoPass::gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo 
       llvm::Instruction *inst = &*instIter;
       analysis.instCount++;
       auto opCode = inst->getOpcode();
-      DAG_builder->add(inst);
 
       if ( opCode == llvm::Instruction::Call )
       {
@@ -24,6 +23,10 @@ FunctionInfoPass::gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo 
         auto &FA = FAM.getResult<FunctionInfoPass>(*callee);
         analysis.InnerFA[callee] = &FA;
         continue;
+      }
+      else 
+      {
+        DAG_builder->add(inst);
       }
 
       switch ( opCode ) {
