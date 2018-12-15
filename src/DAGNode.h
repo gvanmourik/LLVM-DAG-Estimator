@@ -5,7 +5,7 @@
 #include <llvm/IR/Instruction.h>
 
 class DAGNode;
-typedef enum vertex_t{VAL, INST} vertex_t;
+typedef enum vertex_t{VAL, INST, FUNC} vertex_t;
 typedef std::unordered_map<DAGNode*, DAGNode*> DAGVertexList;
 typedef std::unordered_map<llvm::Value*, DAGNode*> DAGValueList;
 
@@ -24,9 +24,9 @@ private:
 
 
 public:
-	DAGNode() : varWidth(1), varDepth(1), opWidth(1), opDepth(1), valueNode(nullptr), type(VAL) {}
-	DAGNode(llvm::Value* value, vertex_t type) : varWidth(1), varDepth(1), 
-		opWidth(1), opDepth(1), valueNode(nullptr), llvmValue(value), type(type) {}
+	DAGNode() : varWidth(0), varDepth(0), opWidth(0), opDepth(0), valueNode(nullptr), type(VAL) {}
+	DAGNode(llvm::Value* value, vertex_t type) : varWidth(0), varDepth(0), 
+		opWidth(0), opDepth(0), valueNode(nullptr), llvmValue(value), type(type) {}
 	~DAGNode() {}
 
 	int getVarWidth() { return varWidth; }
@@ -163,14 +163,23 @@ public:
 		if (type == INST)
 		{
 			auto inst = llvm::cast<llvm::Instruction>(llvmValue);
-      		llvm::outs() << "\tInstruction: " << inst->getOpcodeName();
+      		llvm::outs() << "\t  Instruction: " << inst->getOpcodeName();
       		llvm::outs() << " (" << getName() << ")";
+      		llvm::outs() << "\n\t\t\t(Variable Width: " << varWidth << ")";
+      		llvm::outs() << " (Operator Width: " << opWidth << ")\n";
+      		llvm::outs() << "\t\t\t(ID: " << &*llvmValue << ")\n";
+		}
+		else if (type == FUNC)
+		{
+			llvm::outs() << "\tFunction Call: " << getName();
+			llvm::outs() << " (ID: " << &*llvmValue << ")\n";
 		}
 		else
 		{
-      		llvm::outs() << "\t      Value: " << getName();
+      		llvm::outs() << "\t        Value: " << getName();
+      		llvm::outs() << " (ID: " << &*llvmValue << ")\n";
       	}	
-    	llvm::outs() << " (ID: " << &*llvmValue << ")\n";
+    	
 		
 		/// Recursively print each successor
 		DAGNode* successor;
