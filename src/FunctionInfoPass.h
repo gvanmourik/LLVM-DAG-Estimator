@@ -18,7 +18,7 @@ class FunctionInfoPass : public llvm::AnalysisInfoMixin<FunctionInfoPass>
  public:
 	using Result = FunctionAnalysisInfo;
 
-  FunctionAnalysisInfo run(llvm::Function &function, llvm::FunctionAnalysisManager &FAM)
+  	FunctionAnalysisInfo run(llvm::Function &function, llvm::FunctionAnalysisManager &FAM)
 	{
 		FunctionAnalysisInfo analysis(&function);
 		gatherAnalysis(function, analysis, FAM);
@@ -26,7 +26,7 @@ class FunctionInfoPass : public llvm::AnalysisInfoMixin<FunctionInfoPass>
 	}
 
 	/// Helper function
-  void gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo &analysis,
+  	void gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo &analysis,
                       llvm::FunctionAnalysisManager &FAM);
 
 };

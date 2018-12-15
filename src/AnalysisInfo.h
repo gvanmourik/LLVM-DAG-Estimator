@@ -67,7 +67,7 @@ class FunctionAnalysisInfo : public BaseAnalysisInfo
 		FunctionAnalysis_t InnerFA;
 
 		FunctionAnalysisInfo() : function(nullptr) {}
-    FunctionAnalysisInfo(llvm::Function *function) : function(function) {}
+    	FunctionAnalysisInfo(llvm::Function *function) : function(function) {}
 		~FunctionAnalysisInfo(){}
 
 		void printAnalysis()
