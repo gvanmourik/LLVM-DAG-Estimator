@@ -3,6 +3,8 @@
 
 // #include "DGBuilder.h"
 #include "DAGNode.h"
+#include "FunctionInfoPass.h"
+
 
 class DAGBuilder 
 {
@@ -15,7 +17,7 @@ private:
 
 
 public:
-	DAGBuilder() : hasBeenInitialized(false) {}
+	DAGBuilder() : hasBeenInitialized(false){}
 	~DAGBuilder() {}
 
 	DAGVertexList retrieveDAG() 
@@ -60,6 +62,28 @@ public:
 		return true;
 	}
 
+	bool addVoidFunction(llvm::Value* CallValue, int varWidth, 
+						 int varDepth, int opWidth, int opDepth)
+	{
+		
+		auto callInst = llvm::cast<llvm::CallInst>(CallValue);
+		DAGNode *funcNode = addVertex(callInst, FUNC);
+		auto function = callInst->getCalledFunction();
+		if (function)
+			funcNode->setConstName( function->getName() );
+		else
+			funcNode->setConstName("Indirect function call");
+
+		//update node dimensions
+		funcNode->setVarWidth(varWidth);
+		funcNode->setVarDepth(varDepth);
+		funcNode->setOpWidth(opWidth);
+		funcNode->setOpDepth(opDepth);
+
+		return true;
+	}
+
+
 private:
 	
 	bool addInstruction(llvm::Value* value, DAGNode* parentNode=nullptr)
@@ -72,7 +96,9 @@ private:
 		if ( llvm::isa<llvm::CmpInst>(inst) )
 			return false;
 
-		DAGNode *valNode=nullptr, *instNode=nullptr;		
+		DAGNode *valNode=nullptr, 
+				*instNode=nullptr/*,
+				*funcNode=nullptr*/;		
 
 
 		/// Store
@@ -80,20 +106,35 @@ private:
 		{
 			addStoreInst(valNode, instNode, inst);
 		}
-
 		/// Load (load values only have one operand, the load value)
 		else if ( llvm::isa<llvm::LoadInst>(inst) )
 		{
 			addLoadInst(valNode, instNode, inst);
 		}
+		//THIS ISN'T WORKING, EVEN THOUGH IT'S BEING CALLED IN THE EXACT
+		// SAME WAY AS IN FUNCTIONINFOPASS.CPP
+		// /// Function call
+		// else if ( llvm::isa<llvm::CallInst>(inst) ) 
+		// {
 
+		// 	valNode = addVertex(inst, VAL);
+		// 	// valNode->setVarWidth( analysis.varWidth );
+		// 	// valNode
+
+		// 	// FOR LATER...
+		// 	// if function is void, just set inst node
+		// 	// 		auto funcType = ->getFunctionType();
+		// 	//		funcType->dump();
+		// 	// else set value and inst node
+
+		// }
 		/// Other
 		else
 		{
 			checkAndSet(valNode, instNode, inst);
 
 			// recursively add operands
-			inst->dump();
+			// inst->dump();
 			addOperand(inst->getOperand(0), instNode); // left operand
 			addOperand(inst->getOperand(1), instNode); // right operand
 		}
@@ -139,6 +180,8 @@ private:
 		// store instructions will always have a unique ID
 		instNode = addVertex(storeInst, INST);
 		instNode->setConstName(storeValName);
+		instNode->setVarWidth(1);
+		instNode->setVarDepth(1);
 
 		// add edges
 		addEdge(valNode, instNode);
@@ -161,6 +204,8 @@ private:
 		// set names
 		valNode->setConstName(loadValName);
 		instNode->setConstName(loadValName);
+		instNode->setVarWidth(1);
+		instNode->setVarDepth(1);
 
 		// add edge
 		addEdge(valNode, instNode);
@@ -179,9 +224,20 @@ private:
 		}
 		else
 		{
+			// create a value and inst nodes for the new llvm::value
 			valNode = addVertex(value, VAL);
 			instNode = addVertex(value, INST);
 			instNode->setValueNode(valNode);
+
+			// if the llvm::value is a binary operator inst then update
+			// the add operator width and depth
+			if ( llvm::isa<llvm::BinaryOperator>(value) )
+			{
+				instNode->setOpWidth(1);
+				instNode->setOpDepth(1);
+			}
+
+			// add an edge valNode->instNode
 			addEdge(valNode, instNode);
 		}
 	}
