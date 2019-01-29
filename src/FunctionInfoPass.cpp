@@ -10,6 +10,11 @@ FunctionInfoPass::gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo 
   DAGBuilder *DAG_builder = new DAGBuilder();
   DAG_builder->init();
 
+  ///
+  function.dump();
+  // int storeInstCount = 0;
+  ///
+
   for (auto blockIter=function.begin(); blockIter!=function.end(); ++blockIter)
   {
     llvm::BasicBlock *BB = &*blockIter;
