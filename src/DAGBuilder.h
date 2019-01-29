@@ -150,6 +150,8 @@ private:
 
 	void addStoreInst(DAGNode* &valNode, DAGNode* &instNode, llvm::Instruction *storeInst)
 	{
+		//i.e. store %type %storeVal, %pointerType %targetVal
+
 		llvm::Value *storeVal, *targetVal;
 		storeVal = storeInst->getOperand(0);
 		targetVal = storeInst->getOperand(1);
@@ -166,7 +168,7 @@ private:
 		}
 
 		// set name
-		std::string storeValName;
+		std::string storeValName, targetValName, storeInstName;
 		if ( storeVal->hasName() )
 		{
 			storeValName = storeVal->getName();				
@@ -175,11 +177,20 @@ private:
 		{
 			storeValName = getConstName(storeVal);
 		}
-		storeValName = "store_" + storeValName;
+		if ( targetVal->hasName() )
+		{
+			targetValName = targetVal->getName();				
+		}
+		// else
+		// {
+		// 	targetValName = getConstName(targetVal);
+		// }
+		storeInstName = "store(" + storeValName + "->" + targetValName + ")";
+
 
 		// store instructions will always have a unique ID
 		instNode = addVertex(storeInst, INST);
-		instNode->setConstName(storeValName);
+		instNode->setConstName(storeInstName);
 		instNode->setVarWidth(1);
 		instNode->setVarDepth(1);
 
@@ -193,9 +204,21 @@ private:
 	void addLoadInst(DAGNode* &valNode, DAGNode* &instNode, llvm::Instruction *loadInst)
 	{
 		llvm::Value *loadVal;
+		DAGNode *loadValNode = nullptr;
 		loadVal = loadInst->getOperand(0);
 
-		checkAndSet(valNode, instNode, loadInst);
+		// CheckAndSet is not necessary as each load inst WILL
+		// have a unique address.
+		// 
+		// checkAndSet(valNode, instNode, loadInst);
+		valNode = addVertex(loadInst, VAL);
+		instNode = addVertex(loadInst, INST);
+		instNode->setValueNode(valNode);
+
+		// The load value node already exists if it is
+		// being loaded.
+		auto key = VertexByValue[loadVal];
+		loadValNode = Vertices[key];
 
 		// get name
 		std::string loadValName = loadVal->getName();
@@ -208,10 +231,14 @@ private:
 		instNode->setVarDepth(1);
 
 		// add edge
-		addEdge(valNode, instNode);
+		addEdge(valNode, instNode); 	//i.e. load_a->load
+		addEdge(instNode, loadValNode);	//i.e. load->a
 
-		// recursively add the load value
-		addOperand(loadVal, instNode);
+		// If a value is being loaded it is assumed that
+		// the value has already been stored, so the
+		// recursive addOperand call is NOT necessary.
+		//
+		// addOperand(loadVal, instNode);
 	}
 
 	void checkAndSet(DAGNode* &valNode, DAGNode* &instNode, llvm::Value *value)
@@ -385,7 +412,7 @@ public:
 			vertex->print();
 			if ( vertex->hasSuccessors() )
 			{
-				llvm::outs() << "     Adjacent Nodes: ";
+				llvm::outs() << "       Adjacent Nodes: ";
 				vertex->printSuccessorsNames();
 			}
 			llvm::outs() << "-------------------------------------------------------------\n";

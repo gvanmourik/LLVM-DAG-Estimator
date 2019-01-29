@@ -16,6 +16,7 @@ private:
 	int varDepth;
 	int opWidth;
 	int opDepth;
+	bool visited;
 	DAGNode* valueNode;
 	llvm::Value* llvmValue; //holds either instruction or value
 	vertex_t type;
@@ -24,9 +25,9 @@ private:
 
 
 public:
-	DAGNode() : varWidth(0), varDepth(0), opWidth(0), opDepth(0), valueNode(nullptr), type(VAL) {}
+	DAGNode() : varWidth(0), varDepth(0), opWidth(0), opDepth(0), visited(false), valueNode(nullptr), type(VAL) {}
 	DAGNode(llvm::Value* value, vertex_t type) : varWidth(0), varDepth(0), 
-		opWidth(0), opDepth(0), valueNode(nullptr), llvmValue(value), type(type) {}
+		opWidth(0), opDepth(0), visited(false), valueNode(nullptr), llvmValue(value), type(type) {}
 	~DAGNode() {}
 
 	int getVarWidth() { return varWidth; }
@@ -119,6 +120,19 @@ public:
 		return false;
 	}
 
+	void setVisited(bool status)
+	{
+		visited = status;
+	}
+
+	bool hasBeenVisited()
+	{
+		if (visited == true)
+			return true;
+		else
+			return false;
+	}
+
 	DAGNode* getStoredValueNode()
 	{
 		DAGNode* successor;
@@ -186,7 +200,12 @@ public:
 		for (auto successor_pair : Successors)
 		{
 			successor = successor_pair.second;
-			successor->print();
+			// to prevent an infinite loop mark as visited
+			if ( !successor->hasBeenVisited() )
+			{
+				successor->setVisited(true);
+				successor->print();
+			}
 		}
 	}
 	
