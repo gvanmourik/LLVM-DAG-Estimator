@@ -21,7 +21,7 @@ llvm::Function* generateTest1(llvm::LLVMContext &context, llvm::IRBuilder<> &bui
 
 	/// Variables
   	llvm::Value *if_i_LT_N, *a, *c, *d, *f, *x, *y,
-		*i, *aVal, *cVal, *dVal, *fVal, *xVal, *yVal, *iVal;
+		*i, *aVal, *cVal, *dVal, *fVal, *xVal, *yVal, *iVal, *iValNew, *inc;
 
 	/// EntryBB
 	builder.SetInsertPoint(EntryBB);
@@ -67,8 +67,9 @@ llvm::Function* generateTest1(llvm::LLVMContext &context, llvm::IRBuilder<> &bui
 
 	/// ForIncBB
 	builder.SetInsertPoint(ForIncBB);
-	iVal = builder.CreateAdd(iVal, one, "i++");
-	builder.CreateStore(iVal, i);
+	iValNew = builder.CreateLoad(i);
+	inc = builder.CreateAdd(iValNew, one, "i++");
+	builder.CreateStore(inc, i);
 	builder.CreateBr(ForEntryBB);
 
 	/// ForExitBB
