@@ -210,10 +210,10 @@ private:
 		// CheckAndSet is not necessary as each load inst WILL
 		// have a unique address.
 		// 
-		// checkAndSet(valNode, instNode, loadInst);
-		valNode = addVertex(loadInst, VAL);
-		instNode = addVertex(loadInst, INST);
-		instNode->setValueNode(valNode);
+		checkAndSet(valNode, instNode, loadInst);
+		// valNode = addVertex(loadInst, VAL);
+		// instNode = addVertex(loadInst, INST);
+		// instNode->setValueNode(valNode);
 
 		// The load value node already exists if it is
 		// being loaded.
@@ -225,13 +225,14 @@ private:
 		loadValName = "load_" + loadValName;
 
 		// set names
-		valNode->setConstName(loadValName);
-		instNode->setConstName(loadValName);
+		valNode->setConstName("val_" + loadValName);
+		instNode->setConstName("inst_" + loadValName);
 		instNode->setVarWidth(1);
 		instNode->setVarDepth(1);
 
-		// add edge
-		addEdge(valNode, instNode); 	//i.e. load_a->load
+		//Add edges
+		// edge from valNode->instNode added in checkAndSet
+		// addEdge(valNode, instNode); 	//i.e. load_a->load
 		addEdge(instNode, loadValNode);	//i.e. load->a
 
 		// If a value is being loaded it is assumed that
@@ -415,6 +416,9 @@ public:
 				llvm::outs() << "       Adjacent Nodes: ";
 				vertex->printSuccessorsNames();
 			}
+
+			llvm::outs() << "\nPretty Print...\n";
+			vertex->prettyPrint();
 			llvm::outs() << "-------------------------------------------------------------\n";
 			i++;
 		}
