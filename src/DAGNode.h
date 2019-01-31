@@ -18,7 +18,7 @@ private:
 	int opDepth;
 	bool visited;
 	DAGNode* valueNode;
-	llvm::Value* llvmValue; //holds either instruction or value
+	llvm::Value* llvmValue; //holds either inst or value
 	vertex_t type;
 	std::string constName;
 	DAGVertexList Successors;
@@ -125,6 +125,17 @@ public:
 		visited = status;
 	}
 
+	void setAllUnvisited()
+	{
+		visited = false;
+		DAGNode* successor;
+		for (auto successor_pair : Successors)
+		{
+			successor = successor_pair.second;
+			successor->setVisited(false);
+		}
+	}
+
 	bool hasBeenVisited()
 	{
 		if (visited == true)
@@ -195,7 +206,8 @@ public:
       	}	
     	
 		
-		/// Recursively print each successor
+		/// Iteratively print each successor
+		// setAllUnvisited();
 		DAGNode* successor;
 		for (auto successor_pair : Successors)
 		{
@@ -207,6 +219,78 @@ public:
 				successor->print();
 			}
 		}
+	}
+
+	void prettyPrint(int tabCountLeft=0, int tabCountRight=2, int biOpCount=0)
+	{
+		if (type == INST && llvm::isa<llvm::BinaryOperator>(llvmValue))
+		{
+			biOpCount++;
+
+			auto inst = llvm::cast<llvm::Instruction>(llvmValue);
+			//vertical split
+			llvm::outs() << generateTabs(tabCountLeft) << 
+				" (" << inst->getOpcodeName() << " " << getName() << ")_____ \n";
+			llvm::outs() << generateTabs(tabCountLeft) << " |" << generateTabs(tabCountRight) << "\\ \n";
+			llvm::outs() << generateTabs(tabCountLeft) << " |" << generateTabs(tabCountRight) << " \\\n";
+
+			
+		}
+		else
+		{
+			llvm::outs() << generateTabs(tabCountLeft) << " (" << getName() << ") \n";
+			if ( biOpCount > 0 && tabCountLeft == 0)
+			{
+				if ( hasSuccessors() )
+				{
+					llvm::outs() << generateTabs(tabCountLeft) << " |" << generateTabs(tabCountRight) << " |\n";
+					llvm::outs() << generateTabs(tabCountLeft) << " |" << generateTabs(tabCountRight) << " |\n";
+				}	
+			}
+			else
+			{
+				if ( hasSuccessors() )
+				{
+					llvm::outs() << generateTabs(tabCountLeft) << " |\n";
+					llvm::outs() << generateTabs(tabCountLeft) << " |\n";
+				}
+			}	
+		}
+
+		int successorCount = 0;
+		DAGNode* successor;
+		for (auto successor_pair : Successors)
+		{
+			successor = successor_pair.second;
+			// to prevent an infinite loop mark as visited
+			if ( successor->hasBeenVisited() )
+			{
+				// if ( successor->hasSuccessors() )
+				// {
+				// 	tabCountLeft += 2;
+				// }
+				
+				successor->setVisited(false);
+				successor->prettyPrint(tabCountLeft+2*successorCount, tabCountRight, biOpCount);
+				successorCount++;
+			}
+		}
+	}
+
+	// std::string insertSuccessor(){}
+
+	std::string generateTabs(int count)
+	{
+		std::string tabs;
+		for (int i = 0; i < count; ++i)
+		{
+			// if (i%2 != 0)
+			// 	tabs += " \t";
+			// else
+			// 	tabs += " |\t";
+			tabs += " \t";
+		}
+		return tabs;
 	}
 	
 	void printSuccessorsNames()
