@@ -325,9 +325,10 @@ private:
 		return vertex;
 	}
 
-	void addEdge(DAGNode* parentNode, DAGNode* successor)
+	void addEdge(DAGNode* currentNode, DAGNode* nextNode)
 	{
-		parentNode->addSuccessor(successor);
+		currentNode->addSuccessor(nextNode);
+		nextNode->addPredecessor(currentNode);
 	}
 	
 	bool isValuePresent(llvm::Value* key)
@@ -371,6 +372,48 @@ private:
 			return false;
 	}
 
+	/// Traversal
+	std::vector<DAGNode*> findSourceNodes()
+	{
+		std::vector<DAGNode*> sourceNodes;
+		for (auto vertex_pair : Vertices)
+		{
+			if ( !vertex_pair.second->hasPredecessors() )
+				sourceNodes.push_back(vertex_pair.second);
+		}
+		return sourceNodes;
+	}
+
+	// int getMaxVarWidth(DAGNode *root)
+	// {
+
+	// }
+
+	// int totalDepth(DAGNode *node)
+	// {
+	// 	if (!node->hasSuccessors())
+	// 		return 1;
+	// 	else
+	// 	{
+	// 		DAGNode *successor;
+	// 		std::unordered_map<DAGNode*, int> heights;
+	// 		for (auto successor_pair : node->getSuccessors())
+	// 		{
+	// 			successor = successor_pair.first;
+	// 			heights[successor] = totalDepth(successor);
+	// 		}
+
+	// 		// find largest successor height
+	// 		int highestHigh = 0;
+	// 		for (auto node_height : heights)
+	// 		{
+	// 			if (node_height.second > highestHigh)
+	// 				highestHigh = node_height.second;
+	// 		}
+	// 		return highestHigh;
+	// 	}
+	// }
+
 public:
 	// void collectAdjNodes()
 	// {
@@ -398,6 +441,34 @@ public:
 	// 	createDG();
 	// 	// createVDG();
 	// }
+	
+
+	// int totalDepth(DAGNode *node)
+	// {
+	// 	if (!node->hasSuccessors())
+	// 		return 1;
+	// 	else
+	// 	{
+	// 		DAGNode *successor;
+	// 		std::unordered_map<DAGNode*, int> heights;
+	// 		for (auto successor_pair : node->getSuccessors())
+	// 		{
+	// 			successor = successor_pair.first;
+	// 			heights[successor] = totalDepth(successor);
+	// 		}
+
+	// 		// find largest successor height
+	// 		int highestHigh = 0;
+	// 		for (auto node_height : heights)
+	// 		{
+	// 			if (node_height.second > highestHigh)
+	// 				highestHigh = node_height.second;
+	// 		}
+	// 		return highestHigh;
+	// 	}
+	// }
+
+
 
 	void print()
 	{
@@ -413,15 +484,31 @@ public:
 			vertex->print();
 			if ( vertex->hasSuccessors() )
 			{
-				llvm::outs() << "       Adjacent Nodes: ";
+				llvm::outs() << "           Next Nodes: ";
 				vertex->printSuccessorsNames();
+				llvm::outs() << "       Previous Nodes: ";
+				vertex->printPredecessorsNames();
 			}
 
-			llvm::outs() << "\nPretty Print...\n";
-			vertex->prettyPrint();
+			// llvm::outs() << "\nPretty Print...\n";
+			// vertex->prettyPrint();
+			// 
+			// llvm::outs() << "totalDepth = " << totalDepth(vertex) << "\n";
 			llvm::outs() << "-------------------------------------------------------------\n";
 			i++;
 		}
+
+		/// Print source/root nodes [test] [passed]
+		///***************************************
+		// auto sourceNodes = findSourceNodes();
+		// llvm::outs() << "\nSource Nodes (" << sourceNodes.size() << "):\n";
+		// for (auto sourceNode : sourceNodes)
+		// {
+		// 	sourceNode->print();
+		// 	llvm::outs() << "\n\n";
+		// }
+		///***************************************
+
     	llvm::outs() << "\n";
 	}
 
