@@ -6,6 +6,7 @@
 
 class DAGNode;
 typedef enum vertex_t{VAL, INST, FUNC} vertex_t;
+typedef enum adjNode_t{IN, OUT} adjNode_t;
 typedef std::unordered_map<DAGNode*, DAGNode*> DAGVertexList;
 typedef std::unordered_map<llvm::Value*, DAGNode*> DAGValueList;
 
@@ -21,6 +22,7 @@ private:
 	llvm::Value* llvmValue; //holds either inst or value
 	vertex_t type;
 	std::string constName;
+	DAGVertexList Predecessors;
 	DAGVertexList Successors;
 
 
@@ -38,9 +40,11 @@ public:
 	llvm::Value* getllvmValue() { return llvmValue; }
 	llvm::Type* getllvmValueTy() { return llvmValue->getType(); }
 	std::string getConstName() { return constName; }
-	DAGVertexList getSuccessors() { return Successors; }
 	DAGNode* getValueNode() { return valueNode; }
+	DAGVertexList getSuccessors() { return Successors; }
 	bool hasSuccessors() { return !Successors.empty(); }
+	// DAGVertexList Predecessors() { return Predecessors; }
+	bool hasPredecessors() { return !Predecessors.empty(); }
 
 	void setVarWidth(int width) { varWidth = width; }
 	void setVarDepth(int depth) { varDepth = depth; }
@@ -89,6 +93,16 @@ public:
 		if ( successor != nullptr || !isSuccessorPresent(successor) ) 
 		{
 			Successors[successor] = successor;
+			return true;
+		}
+		return false;
+	}
+
+	bool addPredecessor(DAGNode* predecessor)
+	{
+		if ( predecessor != nullptr || !isPredecessorPresent(predecessor) ) 
+		{
+			Predecessors[predecessor] = predecessor;
 			return true;
 		}
 		return false;
@@ -171,6 +185,14 @@ public:
 			return false;
 	}
 
+	bool isPredecessorPresent(DAGNode* predecessor)
+	{
+		if (Predecessors.count(predecessor) != 0)
+			return true;
+		else
+			return false;
+	}
+
 	bool isaInst()
 	{
 		if (type == INST)
@@ -207,7 +229,6 @@ public:
     	
 		
 		/// Iteratively print each successor
-		// setAllUnvisited();
 		DAGNode* successor;
 		for (auto successor_pair : Successors)
 		{
@@ -219,6 +240,7 @@ public:
 				successor->print();
 			}
 		}
+		setAllUnvisited(); //reset visited status for next print call
 	}
 
 	void prettyPrint(int tabCountLeft=0, int tabCountRight=2, int biOpCount=0)
@@ -298,6 +320,15 @@ public:
 		for (auto successor_pair : Successors)
 		{
       		llvm::outs() << successor_pair.second->getName() << " ";
+		}
+    	llvm::outs() << "\n";
+	}
+
+	void printPredecessorsNames()
+	{
+		for (auto predecessor_pair : Predecessors)
+		{
+      		llvm::outs() << predecessor_pair.second->getName() << " ";
 		}
     	llvm::outs() << "\n";
 	}
