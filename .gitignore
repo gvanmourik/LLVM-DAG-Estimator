@@ -11,6 +11,7 @@ for_loop_tracker
 build/
 images/
 genIR/
+dotFiles/
 
 ## Other
 .DS_Store
