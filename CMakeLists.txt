@@ -17,4 +17,5 @@ set (LLVMEstimator_VERSION_MINOR 1)
 add_subdirectory(src)
 add_subdirectory(bin)
 
-
+# Create a directory to dump the .dot files
+file(MAKE_DIRECTORY dotFiles)
