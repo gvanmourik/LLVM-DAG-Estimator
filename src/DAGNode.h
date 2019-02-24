@@ -1,6 +1,8 @@
 #ifndef DAG_NODE_H
 #define DAG_NODE_H
 
+#include <cstdint>
+#include <sstream>
 #include <unordered_map>
 #include <llvm/IR/Instruction.h>
 
@@ -41,7 +43,7 @@ public:
 	llvm::Type* getllvmValueTy() { return llvmValue->getType(); }
 	std::string getConstName() { return constName; }
 	DAGNode* getValueNode() { return valueNode; }
-	DAGVertexList getSuccessors() { return Successors; }
+	DAGVertexList& getSuccessors() { return Successors; }
 	bool hasSuccessors() { return !Successors.empty(); }
 	// DAGVertexList Predecessors() { return Predecessors; }
 	bool hasPredecessors() { return !Predecessors.empty(); }
@@ -331,6 +333,34 @@ public:
       		llvm::outs() << predecessor_pair.second->getName() << " ";
 		}
     	llvm::outs() << "\n";
+	}
+
+
+	bool DOTcreateNode(std::ostringstream &outSS, DAGNode* parentNode=nullptr)
+	{
+		// Declare node format:
+		//	nodeName[label = "<label>"];
+		auto nodeAddress = DOTnodeID();
+		outSS << nodeAddress << "[label = \"" << getName() << "\"];" << std::endl;
+
+		// Link and add to graph
+		//	"parentNode"->"node";
+		if ( parentNode != nullptr)
+		{
+			outSS << "\"" << parentNode->DOTnodeID() << "\"->\"";
+			outSS << nodeAddress << "\";" << std::endl;  
+		}
+
+		return true;
+	}
+
+	std::string DOTnodeID()
+	{
+		std::uintptr_t ptr_val = std::uintptr_t(&*llvmValue);
+		std::stringstream ss;
+		ss << std::dec << ptr_val;
+
+		return ss.str();
 	}
 
 };

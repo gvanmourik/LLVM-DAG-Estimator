@@ -1,6 +1,9 @@
 #ifndef DAG_BUILDER_H
 #define DAG_BUILDER_H
 
+#include <fstream>
+#include <sstream>
+
 // #include "DGBuilder.h"
 #include "DAGNode.h"
 #include "FunctionInfoPass.h"
@@ -185,7 +188,7 @@ private:
 		// {
 		// 	targetValName = getConstName(targetVal);
 		// }
-		storeInstName = "store(" + storeValName + "->" + targetValName + ")";
+		storeInstName = "store(" + storeValName + " to " + targetValName + ")";
 
 
 		// store instructions will always have a unique ID
@@ -373,16 +376,92 @@ private:
 	}
 
 	/// Traversal
-	std::vector<DAGNode*> findSourceNodes()
+	bool findSourceNodes(std::vector<DAGNode*> &sourceNodes)
 	{
-		std::vector<DAGNode*> sourceNodes;
+		if ( Vertices.empty() )
+			return false;
+
+		sourceNodes.clear();
 		for (auto vertex_pair : Vertices)
 		{
 			if ( !vertex_pair.second->hasPredecessors() )
 				sourceNodes.push_back(vertex_pair.second);
 		}
-		return sourceNodes;
+		return true;
 	}
+
+	// int findMaxDepth()
+	// {
+	// 	auto sourceNodes = findSourceNodes();
+	// 	if ( sourceNodes.empty() )
+	// 		return 0;
+
+	// 	std::vector<int> sourceDepths( sourceNodes.size() ); //vector to record depths
+	// 	int index = 0;
+
+	// 	for ( auto sourceNode : sourceNodes )
+	// 	{
+	// 		//recursive helper funciton that is fed each source/root node
+	// 		// sourceDepths[index] = 0;
+	// 		sourceNode->setAllUnvisited();
+	// 		sourceDepths[index] = maxDepthWrapper(sourceNode);
+	// 		index++;
+	// 	}
+
+	// 	//find maxDepth
+	// 	int maxDepth = 1;
+	// 	for ( auto depth : sourceDepths )
+	// 	{
+	// 		if ( depth > maxDepth )
+	// 			maxDepth = depth;
+	// 	}
+
+	// 	return maxDepth;
+	// }
+
+	// int maxDepthWrapper(DAGNode *node)
+	// {
+	// 	// if ( !node->hasSuccessors() )
+	// 	// 	return false;
+		
+	// 	// auto Successors = node->getSuccessors();
+
+	// 	// // if node is store inst... [for varDepth]
+	// 	// 	depth++;
+
+	// 	// for ( auto successor_pair : *Successors )
+	// 	// {
+	// 	// 	// update maxDepth
+	// 	// 	if (depth > maxDepth)
+	// 	// 		maxDepth = depth;
+
+	// 	// 	// recursive call
+	// 	// 	maxDepthWrapper(successor_pair.second, depth, maxDepth);
+	// 	// }
+
+	// 	// return true;
+	// 	node->setVisited(true);
+
+	// 	if ( !node->hasSuccessors() )
+	// 		return 1;
+
+	// 	auto Successors = node->getSuccessors();
+	// 	std::vector<int> depths ( Successors.size() );
+	// 	int index = 0;
+
+	// 	for ( auto successor_pair : Successors )
+	// 	{
+	// 		successor_pair.second->setAllUnvisited();
+	// 		depths[index] = maxDepthWrapper(successor_pair.second); //EXC_BAD_ACCESS
+	// 		index++;
+	// 	}
+
+	// 	return *std::max_element( depths.begin(), depths.end() );
+	// }
+
+
+
+
 
 	// int getMaxVarWidth(DAGNode *root)
 	// {
@@ -493,7 +572,6 @@ public:
 			// llvm::outs() << "\nPretty Print...\n";
 			// vertex->prettyPrint();
 			// 
-			// llvm::outs() << "totalDepth = " << totalDepth(vertex) << "\n";
 			llvm::outs() << "-------------------------------------------------------------\n";
 			i++;
 		}
@@ -509,6 +587,8 @@ public:
 		// }
 		///***************************************
 
+		// llvm::outs() << "\nmaxDepth = " << findMaxDepth() << "\n\n";
+
     	llvm::outs() << "\n";
 	}
 
@@ -519,7 +599,77 @@ public:
 	// }
 	
 
+	bool DOTGenerateFile(std::string functionName)
+	{
+		std::vector<DAGNode*> sourceNodes;
+		if ( !findSourceNodes(sourceNodes) )
+		{
+			llvm::outs() << " ERROR: No source nodes were found!\n";
+			return false;
+		}
+
+		// stream to collect file output
+		std::ostringstream outSS;
+
+		// init graph and node specs
+		outSS << "digraph g{" << std::endl;
+		outSS << "node [shape = record,height = .1];" << std::endl;
+
+		// generate node markup for each source/root node
+		for (auto root : sourceNodes)
+		{
+			root->DOTcreateNode(outSS);
+			DOTAddSuccessor(outSS, root);
+		}
+		outSS << "}" << std::endl;
+
+		// Create and add to the .dot file
+		std::string filePath = "../../dotFiles/" + functionName + "_Graph.dot";
+		std::ofstream dotFile(filePath);
+		if ( dotFile.is_open() )
+		{
+			dotFile << outSS.str();
+			dotFile.close();
+		}
+		else
+		{
+			llvm::outs() << " ERROR: DOT file did not open!\n";
+			return false;
+		}
+
+		llvm::outs() << " -->DOT file generate at: " << filePath << "\n";
+		return true;
+	}
+
+	bool DOTAddSuccessor(std::ostringstream &outSS, DAGNode* parentNode)
+	{
+		if ( !parentNode->hasSuccessors() )
+			return false;
+
+		auto Successors = parentNode->getSuccessors();
+		DAGNode *successor;
+		for (auto successor_pair : Successors)
+		{
+			successor = successor_pair.second;
+			// to prevent an infinite loop mark as visited
+			if ( !successor->hasBeenVisited() )
+			{
+				successor->setVisited(true);
+				successor->DOTcreateNode(outSS, parentNode);
+				DOTAddSuccessor(outSS, successor);
+			}
+		}
+		parentNode->setAllUnvisited(); //reset visited status for next print call
+
+		return true;
+	}
+
 };
+
+
+
+
+
 
 
 #endif /* DAG_BUILDER_H */
