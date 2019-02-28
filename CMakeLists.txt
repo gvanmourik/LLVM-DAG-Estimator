@@ -19,3 +19,12 @@ add_subdirectory(bin)
 
 # Create a directory to dump the .dot files
 file(MAKE_DIRECTORY dotFiles)
+
+# OPTION(DEFINE_GEN_DOT 
+# 	   "Generate a dot file graph for each llvm function analyzed. 
+# 	    {Stored at dotFiles/}" OFF) # Disabled by default
+
+# IF(DEFINE_GEN_DOT)
+# 	message(STATUS "defining GEN_DOT...")
+#     add_definitions(-DGEN_DOT)
+# ENDIF(DEFINE_GEN_DOT)

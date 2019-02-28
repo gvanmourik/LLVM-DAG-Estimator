@@ -3,6 +3,7 @@
 *.o
 *.rtf
 *.dot
+src/DAG.h
 
 ## Exe
 for_loop_tracker

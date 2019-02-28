@@ -1,0 +1,22 @@
+#! /bin/bash
+
+ImageDir="pngFiles"
+
+cd ../dotFiles
+
+if [ ! -d "$ImageDir" ]; then
+	mkdir $ImageDir
+fi
+
+# convert each dot file
+for file in *.dot; do
+    [ -f "$file" ] || break
+    filename="${file%.*}"
+    dot -Tpng $filename.dot -o $filename.png
+done 
+
+# move each png file to pngFiles
+for file in *.png; do
+    [ -f "$file" ] || break
+    mv $file $ImageDir/$file
+done 
