@@ -23,4 +23,4 @@ std::unique_ptr<llvm::Module> readIRFile(llvm::StringRef fname, llvm::LLVMContex
 llvm::FunctionAnalysisManager
 runDefaultOptimization(llvm::Function& f, llvm::PassBuilder::OptimizationLevel optLevel);
 
-void runEstimatorAnalysis(llvm::Function& f, llvm::PassBuilder::OptimizationLevel optLevel);
+void runEstimatorAnalysis(llvm::Function& f, llvm::PassBuilder::OptimizationLevel optLevel, bool dotFlag);

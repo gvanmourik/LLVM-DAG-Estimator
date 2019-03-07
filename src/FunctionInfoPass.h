@@ -9,6 +9,8 @@
 #include "AnalysisInfo.h"
 #include "DAGBuilder.h"
 
+extern bool generateDOT;
+
 /// New PassManager pass
 class FunctionInfoPass : public llvm::AnalysisInfoMixin<FunctionInfoPass>
 {

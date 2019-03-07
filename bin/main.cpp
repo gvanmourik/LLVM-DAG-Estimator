@@ -18,6 +18,8 @@ int main(int argc, char* argv[])
 
   int builtinTest = -1;
   int iters = 5;
+  int genDot = -1;
+  bool dotFlag = false;
 
   CLI::App app{"LLVM Estimator"};
   app.add_option("--opt", optLevel_str, "the load balancer type to use");
@@ -26,7 +28,8 @@ int main(int argc, char* argv[])
   app.add_option("--builtin", builtinTest, "The number of the built-in test to run");
   app.add_option("--fxn", fxnName, "The name of the function in the IR file to analyze");
   app.add_option("--iters,-i", iters, "The number of iterations for buildint tests 1-3");
-  
+  app.add_option("--gendot", genDot, "Set to '1' to generate .dot files along with the analysis [generated to dotFiles/]");
+
   if (argc > 1){
     try {
       app.parse(argc, argv);
@@ -41,6 +44,20 @@ int main(int argc, char* argv[])
   llvm::InitializeNativeTarget();
   llvm::InitializeNativeTargetAsmPrinter();
 
+  if (genDot != -1)
+  {
+    if (genDot == 1)
+    {
+      dotFlag = true;  
+    }
+    else
+    {
+      std::cerr << "Not an acceptable option for --gendot" << std::endl;
+      std::cerr << "Run with --help to view possible options" << std::endl;
+      return -1;
+    }
+  }
+
   bool ranTest = false;
   if (!cppFname.empty()){
     std::cerr << "Do not yet support generated LLVM functions directly from C++ source" << std::endl;
@@ -54,10 +71,10 @@ int main(int argc, char* argv[])
     for (auto iter=module->begin(); iter!=module->end(); ++iter){
       llvm::Function& f = *iter;
       if (fxnName.empty()){ //no specific request
-        runEstimatorAnalysis(f, llvmOptLevel);
+        runEstimatorAnalysis(f, llvmOptLevel, dotFlag);
       } 
       else if (fxnName == f.getName()) {
-        runEstimatorAnalysis(f, llvmOptLevel);
+        runEstimatorAnalysis(f, llvmOptLevel, dotFlag);
       }
     }
     if (!fxnName.empty()) {
@@ -86,7 +103,7 @@ int main(int argc, char* argv[])
         std::cerr << "Invalid test number " << builtinTest << " specified" << std::endl;
         return 1;
     }
-    runEstimatorAnalysis(*f, llvmOptLevel);
+    runEstimatorAnalysis(*f, llvmOptLevel, dotFlag);
     ranTest = true;
   }
 

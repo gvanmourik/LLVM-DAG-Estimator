@@ -2,6 +2,7 @@
 
 #include "FunctionInfoPass.h"
 
+// bool generateDAG;
 llvm::AnalysisKey FunctionInfoPass::Key;
 
 /// Helper function
@@ -64,10 +65,11 @@ FunctionInfoPass::gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo 
   // DAG_builder->fini();
   // DAG_builder->print();
   
-  // #ifdef GEN_DOT
+  if (generateDOT)
+  {
     if ( !DAG_builder->DOTGenerateFile(function.getName()) )
       llvm::outs() << " ERROR: DOT file not generated!\n";
-  // #endif
+  }
 
   // auto DG_builder = DAG_builder->getDGBuilder();
   // analysis.varWidth = DG_builder->getVDGWidth();
