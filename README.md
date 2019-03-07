@@ -35,7 +35,7 @@ Use the estimate tool on the generated IR code with:
 ````
 
 ## Generating and Viewing DOT Files
-### Generating DOT Files
+### Generating the DOT Files
 To generate the DOT files for each llvm function analyzed refer to the following examples:
 
 Example 1 - Generate the DOT files for the built-in tests:
@@ -48,7 +48,7 @@ Example 2 - Generate the DOT files for a set of generated IR code:
 ./estimate --ir ${path_to_IR_code} --gendot 1
 ```
 
-### Viewing DOT Files
+### Viewing the DOT Files
 After generating the DOT files, follow these steps to view an image of the DAG:
 
 ```
