@@ -11,7 +11,7 @@
 
 int main(int argc, char* argv[])
 {
-  std::string optLevel_str = "2";
+  std::string optLevel_str = "0";
   std::string cppFname;
   std::string irFname;
   std::string fxnName;
