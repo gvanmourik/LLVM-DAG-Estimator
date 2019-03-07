@@ -613,11 +613,12 @@ public:
 
 		// init graph and node specs
 		outSS << "digraph g{" << std::endl;
-		outSS << "node [shape = record,height = .1];" << std::endl;
+		outSS << "\tnode [shape = record,height = .1];" << std::endl;
 
 		// generate node markup for each source/root node
 		for (auto root : sourceNodes)
 		{
+			outSS << std::endl; //add break between each root
 			root->DOTcreateNode(outSS);
 			DOTAddSuccessor(outSS, root);
 		}
@@ -637,7 +638,7 @@ public:
 			return false;
 		}
 
-		llvm::outs() << " -->DOT file generate at: " << filePath << "\n";
+		llvm::outs() << " -- DOT file generated at: " << filePath << "\n";
 		return true;
 	}
 

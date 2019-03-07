@@ -341,13 +341,13 @@ public:
 		// Declare node format:
 		//	nodeName[label = "<label>"];
 		auto nodeAddress = DOTnodeID();
-		outSS << nodeAddress << "[label = \"" << getName() << "\"];" << std::endl;
+		outSS << "\t" << nodeAddress << "[label = \"" << getName() << "\"];" << std::endl;
 
 		// Link and add to graph
 		//	"parentNode"->"node";
 		if ( parentNode != nullptr)
 		{
-			outSS << "\"" << parentNode->DOTnodeID() << "\"->\"";
+			outSS << "\t\"" << parentNode->DOTnodeID() << "\"->\"";
 			outSS << nodeAddress << "\";" << std::endl;  
 		}
 
