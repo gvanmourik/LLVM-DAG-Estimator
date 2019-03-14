@@ -613,14 +613,18 @@ public:
 
 		// init graph and node specs
 		outSS << "digraph g{" << std::endl;
-		outSS << "\tnode [shape = record,height = .1];" << std::endl;
+		outSS << "\tnode [shape = record,height = .1];" << std::endl << std::endl;
+		outSS << "\tlabelloc = \"t\";" << std::endl;
+		outSS << "\tlabel = \"" << functionName << "_DAG" << "\";" << std::endl;
 
 		// generate node markup for each source/root node
 		for (auto root : sourceNodes)
 		{
-			outSS << std::endl; //add break between each root
+			outSS << std::endl;
+			outSS << "\tsubgraph " << root->getName() << " {" << std::endl;
 			root->DOTcreateNode(outSS);
 			DOTAddSuccessor(outSS, root);
+			outSS << "\t}" << std::endl;
 		}
 		outSS << "}" << std::endl;
 
