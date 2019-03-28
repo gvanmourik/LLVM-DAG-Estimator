@@ -1,8 +1,6 @@
-// #define GEN_DOT
 
 #include "FunctionInfoPass.h"
 
-// bool generateDAG;
 llvm::AnalysisKey FunctionInfoPass::Key;
 
 /// Helper function
