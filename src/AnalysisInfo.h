@@ -24,7 +24,7 @@ class BaseAnalysisInfo
 			varWidth(0), varDepth(0), opWidth(0), opDepth(0) {}
 		~BaseAnalysisInfo(){}
 
-		void printAnalysis()
+		void print()
 		{
 			llvm::outs() << "\t       instCount = " << instCount << "\n";
 			llvm::outs() << "\t         bbCount = " << bbCount << "\n";
@@ -70,21 +70,23 @@ class FunctionAnalysisInfo : public BaseAnalysisInfo
     	FunctionAnalysisInfo(llvm::Function *function) : function(function) {}
 		~FunctionAnalysisInfo(){}
 
-		void printAnalysis()
+		void print()
 		{
 			if (function!=nullptr)
-        llvm::outs() << "\t     Function = " << function->getName() << "()\n";
-			BaseAnalysisInfo::printAnalysis();
+			{
+        		llvm::outs() << "\t     Function = " << function->getName() << "()\n";
+			}
+			BaseAnalysisInfo::print();
 
 			if ( !InnerFA.empty() )
 			{
-        llvm::outs() << "\t----------------------------------------\n";
-        llvm::outs() << "\tInnerFA: (FunctionAnalysisInfo)\n";
+        		llvm::outs() << "\t----------------------------------------\n";
+        		llvm::outs() << "\tInnerFA: (FunctionAnalysisInfo)\n";
 				for (auto i=InnerFA.begin(); i != InnerFA.end(); ++i)
 				{
-					i->second->printAnalysis();
+					i->second->print();
 				}
-        llvm::outs() << "\t----------------------------------------\n";
+        		llvm::outs() << "\t----------------------------------------\n";
 			}
 		}
 
@@ -109,20 +111,20 @@ class ModuleAnalysisInfo : public BaseAnalysisInfo
     	ModuleAnalysisInfo(llvm::Module *module) : module(module) {}
 		~ModuleAnalysisInfo(){}
 
-		void printAnalysis()
+		void print()
 		{
 			llvm::outs() << "----------------------------------------\n";
 			llvm::outs() << "Module: " << module->getName() << "\n";
 			llvm::outs() << "\t          Layout = " << module->getDataLayoutStr() << "\n";
 			llvm::outs() << "\t    TargetTriple = " << module->getTargetTriple() << "\n";
 			llvm::outs() << "\t      SourceFile = " << module->getSourceFileName() << "\n";
-			BaseAnalysisInfo::printAnalysis();
+			BaseAnalysisInfo::print();
 
       		llvm::outs() << "----------------------------------------\n";
       		llvm::outs() << "Function: (ModuleAnalysisInfo)\n";
 			for (auto i=FunctionAnalyses.begin(); i != FunctionAnalyses.end(); ++i)
 			{
-				i->second->printAnalysis();
+				i->second->print();
 			}
       		llvm::outs() << "----------------------------------------\n";
 		}
