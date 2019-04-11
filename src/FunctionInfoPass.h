@@ -33,5 +33,24 @@ class FunctionInfoPass : public llvm::AnalysisInfoMixin<FunctionInfoPass>
 
 };
 
+
+/// Legacy pass manager
+class DAGWrapperPass : public llvm::FunctionPass 
+{
+private:
+   FunctionAnalysisInfo* AnalysisInfo;
+ 
+public:
+   static char ID;
+ 
+   DAGWrapperPass() : FunctionPass(ID) {}
+ 
+   FunctionAnalysisInfo* getAnalysisInfo() { return AnalysisInfo; }
+ 
+   virtual bool runOnFunction(llvm::Function &F);
+ 
+   virtual void print(llvm::raw_ostream &OS, const llvm::Module *M = nullptr) const;
+};
+
 #endif /* FUNCTION_INFO_PASS_H */
 

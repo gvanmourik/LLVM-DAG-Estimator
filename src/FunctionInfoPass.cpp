@@ -77,3 +77,20 @@ FunctionInfoPass::gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo 
 
 }
 
+
+
+/// Legacy pass manager
+char DAGWrapperPass::ID = 0;
+static llvm::RegisterPass<DAGWrapperPass> H("DAGPass", "Create a directed acyclic graph (DAG)");
+ 
+bool DAGWrapperPass::runOnFunction(llvm::Function &F) 
+{
+  // DT.recalculate(F);
+  return false;
+}
+ 
+void DAGWrapperPass::print(llvm::raw_ostream &OS, const llvm::Module *) const 
+{
+  AnalysisInfo->print();
+}
+
