@@ -5,9 +5,6 @@
 *.dot
 src/DAG.h
 
-## Exe
-for_loop_tracker
-
 ## Directories
 build/
 images/
