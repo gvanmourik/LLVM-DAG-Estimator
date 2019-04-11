@@ -17,7 +17,7 @@ void runEstimatorAnalysis(llvm::Function& f, llvm::PassBuilder::OptimizationLeve
   	llvm::outs() << "    -- Running: ../scripts/dot_to_png\n";
   }
   llvm::outs() << "----------------------------------------\n";
-  FA.printAnalysis();
+  FA.print();
   llvm::outs() << "----------------------------------------\n";
 }
 
