@@ -9,8 +9,8 @@
 class DAGNode;
 typedef enum vertex_t{VAL, INST, FUNC} vertex_t;
 typedef enum adjNode_t{IN, OUT} adjNode_t;
-typedef std::unordered_map<DAGNode*, DAGNode*> DAGVertexList;
-typedef std::unordered_map<llvm::Value*, DAGNode*> DAGValueList;
+typedef std::map<DAGNode*, DAGNode*> DAGVertexList;
+typedef std::map<llvm::Value*, DAGNode*> DAGValueList;
 
 class DAGNode {
 
@@ -39,11 +39,13 @@ public:
 	int getOpWidth() { return opWidth; }
 	int getOpDepth() { return opDepth; }
 	vertex_t getType() { return type; }
-	llvm::Value* getllvmValue() { return llvmValue; }
+	const llvm::Value* getllvmValue() { return llvmValue; }
 	llvm::Type* getllvmValueTy() { return llvmValue->getType(); }
 	std::string getConstName() { return constName; }
 	DAGNode* getValueNode() { return valueNode; }
-	DAGVertexList& getSuccessors() { return Successors; }
+	DAGVertexList& getSuccessors() { 
+		// std::cout << "returning ssuccessors..." << std::endl;
+		return Successors; }
 	bool hasSuccessors() { return !Successors.empty(); }
 	// DAGVertexList Predecessors() { return Predecessors; }
 	bool hasPredecessors() { return !Predecessors.empty(); }
@@ -62,6 +64,19 @@ public:
 			return Successors[successor];
 		else
 			return nullptr;
+	}
+
+	bool isStoreInstNext()
+	{
+		if ( Successors.size() != 1 )
+			return false;
+
+		auto childNode = Successors.begin()->second;
+		if ( llvm::isa<llvm::StoreInst>(childNode->getllvmValue()) )
+		{
+			return true;
+		}
+		return false;
 	}
 
 	std::string getName() 

@@ -390,74 +390,77 @@ private:
 		return true;
 	}
 
-	// int findMaxDepth()
-	// {
-	// 	auto sourceNodes = findSourceNodes();
-	// 	if ( sourceNodes.empty() )
-	// 		return 0;
+	int findHeight()
+	{
+		std::vector<DAGNode*> sourceNodes;
+		if ( !findSourceNodes(sourceNodes) )
+		{
+			llvm::outs() << " ERROR: No source nodes were found!\n";
+			return false;
+		}
+		if ( sourceNodes.empty() )
+			return 0;
 
-	// 	std::vector<int> sourceDepths( sourceNodes.size() ); //vector to record depths
-	// 	int index = 0;
+		std::vector<int> sourceDepths(sourceNodes.size()); //vector to record depths
+		int index = 0;
 
-	// 	for ( auto sourceNode : sourceNodes )
-	// 	{
-	// 		//recursive helper funciton that is fed each source/root node
-	// 		// sourceDepths[index] = 0;
-	// 		sourceNode->setAllUnvisited();
-	// 		sourceDepths[index] = maxDepthWrapper(sourceNode);
-	// 		index++;
-	// 	}
+		for ( auto sourceNode : sourceNodes )
+		{
+			//recursive helper funciton that is fed each source/root node
+			// sourceDepths[index] = 0;
+			// std::cout << "\nSource node[" << sourceNode->getName() << "]:" << std::endl;
+			sourceNode->setAllUnvisited();
+			sourceDepths[index] = findHeightWrapper(sourceNode);
+			index++;
+		}
 
-	// 	//find maxDepth
-	// 	int maxDepth = 1;
-	// 	for ( auto depth : sourceDepths )
-	// 	{
-	// 		if ( depth > maxDepth )
-	// 			maxDepth = depth;
-	// 	}
+		//find maxDepth
+		// int i = 0;
+		int maxDepth = 1;
+		for ( auto depth : sourceDepths )
+		{
+			// i++;
+			// std::cout << "depth[" << i << "] = " << depth << std::endl;
+			if ( depth > maxDepth )
+				maxDepth = depth;
+		}
 
-	// 	return maxDepth;
-	// }
+		return maxDepth;
+	}
 
-	// int maxDepthWrapper(DAGNode *node)
-	// {
-	// 	// if ( !node->hasSuccessors() )
-	// 	// 	return false;
-		
-	// 	// auto Successors = node->getSuccessors();
+	int findHeightWrapper(DAGNode *node)
+	{
+		node->setVisited(true);
+		if ( !node->hasSuccessors() )
+			return 1;
 
-	// 	// // if node is store inst... [for varDepth]
-	// 	// 	depth++;
+		// std::cout << "getting successors for Node[" << node->getName() << "]..." << std::endl;
+		auto Successors = node->getSuccessors();
+		std::vector<int> depths(Successors.size());
+		int index = 0;
 
-	// 	// for ( auto successor_pair : *Successors )
-	// 	// {
-	// 	// 	// update maxDepth
-	// 	// 	if (depth > maxDepth)
-	// 	// 		maxDepth = depth;
+		for ( auto successor_pair : Successors )
+		{
+			auto successor = successor_pair.second;
+			if ( !successor->hasBeenVisited() )
+			{
 
-	// 	// 	// recursive call
-	// 	// 	maxDepthWrapper(successor_pair.second, depth, maxDepth);
-	// 	// }
+				//find total varDepth
+				if ( successor->isStoreInstNext() )
+				{
+					depths[index] = findHeightWrapper(successor) + 1;
+				}
+				else
+				{
+					depths[index] = findHeightWrapper(successor);
+				}
+				// std::cout << "Node[" << successor->getName() << "] depth = " << depths[index] << std::endl;
+				index++;
+			}
+		}
 
-	// 	// return true;
-	// 	node->setVisited(true);
-
-	// 	if ( !node->hasSuccessors() )
-	// 		return 1;
-
-	// 	auto Successors = node->getSuccessors();
-	// 	std::vector<int> depths ( Successors.size() );
-	// 	int index = 0;
-
-	// 	for ( auto successor_pair : Successors )
-	// 	{
-	// 		successor_pair.second->setAllUnvisited();
-	// 		depths[index] = maxDepthWrapper(successor_pair.second); //EXC_BAD_ACCESS
-	// 		index++;
-	// 	}
-
-	// 	return *std::max_element( depths.begin(), depths.end() );
-	// }
+		return *std::max_element( depths.begin(), depths.end() );
+	}
 
 
 
@@ -466,31 +469,6 @@ private:
 	// int getMaxVarWidth(DAGNode *root)
 	// {
 
-	// }
-
-	// int totalDepth(DAGNode *node)
-	// {
-	// 	if (!node->hasSuccessors())
-	// 		return 1;
-	// 	else
-	// 	{
-	// 		DAGNode *successor;
-	// 		std::unordered_map<DAGNode*, int> heights;
-	// 		for (auto successor_pair : node->getSuccessors())
-	// 		{
-	// 			successor = successor_pair.first;
-	// 			heights[successor] = totalDepth(successor);
-	// 		}
-
-	// 		// find largest successor height
-	// 		int highestHigh = 0;
-	// 		for (auto node_height : heights)
-	// 		{
-	// 			if (node_height.second > highestHigh)
-	// 				highestHigh = node_height.second;
-	// 		}
-	// 		return highestHigh;
-	// 	}
 	// }
 
 public:
@@ -519,32 +497,6 @@ public:
 	// 	collectAdjNodes();
 	// 	createDG();
 	// 	// createVDG();
-	// }
-	
-
-	// int totalDepth(DAGNode *node)
-	// {
-	// 	if (!node->hasSuccessors())
-	// 		return 1;
-	// 	else
-	// 	{
-	// 		DAGNode *successor;
-	// 		std::unordered_map<DAGNode*, int> heights;
-	// 		for (auto successor_pair : node->getSuccessors())
-	// 		{
-	// 			successor = successor_pair.first;
-	// 			heights[successor] = totalDepth(successor);
-	// 		}
-
-	// 		// find largest successor height
-	// 		int highestHigh = 0;
-	// 		for (auto node_height : heights)
-	// 		{
-	// 			if (node_height.second > highestHigh)
-	// 				highestHigh = node_height.second;
-	// 		}
-	// 		return highestHigh;
-	// 	}
 	// }
 
 
@@ -587,7 +539,7 @@ public:
 		// }
 		///***************************************
 
-		// llvm::outs() << "\nmaxDepth = " << findMaxDepth() << "\n\n";
+		// llvm::outs() << "\nTotal height = " << findHeight() << "\n\n";
 
     	llvm::outs() << "\n";
 	}
