@@ -21,4 +21,4 @@ for file in *.png; do
     mv $file $ImageDir/$file
 done 
 
-open pngFiles/
+open $ImageDir/
