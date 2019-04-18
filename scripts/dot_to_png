@@ -20,3 +20,5 @@ for file in *.png; do
     [ -f "$file" ] || break
     mv $file $ImageDir/$file
 done 
+
+open pngFiles/
