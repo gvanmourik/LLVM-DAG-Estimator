@@ -35,15 +35,17 @@ list(REMOVE_ITEM inherited_cxx_flags "-fno-exceptions")
 list(REMOVE_ITEM inherited_cxx_flags "-fno-rtti")
 
 set(SOURCES
-FunctionInfoPass.cpp
-ModuleInfoPass.cpp
-execute.cpp
-optimize.cpp
-parseIr.cpp
-runAnalysis.cpp
-test1.cpp
-test2.cpp
-test3.cpp
+  DAGBuilder.cpp
+  DAGNode.cpp
+  FunctionInfoPass.cpp
+  ModuleInfoPass.cpp
+  execute.cpp
+  optimize.cpp
+  parseIr.cpp
+  runAnalysis.cpp
+  test1.cpp
+  test2.cpp
+  test3.cpp
 )
 
 add_library(llvmEstimator ${SOURCES})

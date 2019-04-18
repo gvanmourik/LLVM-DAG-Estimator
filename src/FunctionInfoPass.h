@@ -27,7 +27,7 @@ class FunctionInfoPass : public llvm::AnalysisInfoMixin<FunctionInfoPass>
 		return analysis;
 	}
 
-	/// Helper function
+	/// Gather analysis for the passed llvm function.
   	void gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo &analysis,
                       llvm::FunctionAnalysisManager &FAM);
 

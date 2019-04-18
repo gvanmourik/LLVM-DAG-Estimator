@@ -1,9 +1,14 @@
-
 #include "FunctionInfoPass.h"
 
 llvm::AnalysisKey FunctionInfoPass::Key;
 
-/// Helper function
+/**
+ * @brief      Gather analysis for the passed llvm function.
+ *
+ * @param      function  The llvm function
+ * @param      analysis  The object to collect the analysis data
+ * @param      FAM       The function analysis manager
+ */
 void 
 FunctionInfoPass::gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo &analysis,
                                  llvm::FunctionAnalysisManager &FAM)
@@ -11,19 +16,19 @@ FunctionInfoPass::gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo 
   DAGBuilder *DAG_builder = new DAGBuilder();
   DAG_builder->init();
 
-  ///
+  // Print the llvm ir for the function
   function.dump();
-  // int storeInstCount = 0;
-  ///
 
+  // Iterate through blocks
   for (auto blockIter=function.begin(); blockIter!=function.end(); ++blockIter)
   {
     llvm::BasicBlock *BB = &*blockIter;
+    // Iterate through the instructions of each block
     for (auto instIter=BB->begin(); instIter!=BB->end(); ++instIter) 
     {
       llvm::Instruction *inst = &*instIter;
-      analysis.instCount++;
       auto opCode = inst->getOpcode();
+      analysis.instCount++;
 
       if ( opCode == llvm::Instruction::Call )
       {
@@ -60,7 +65,6 @@ FunctionInfoPass::gatherAnalysis(llvm::Function &function, FunctionAnalysisInfo 
   }
 
   DAG_builder->lock();
-  // DAG_builder->fini();
   // DAG_builder->print();
   
   if (generateDOT)

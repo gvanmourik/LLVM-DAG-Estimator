@@ -1,5 +1,4 @@
 #include <LLVMHeaders.h>
-#include "llvmEstimator.h"
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
@@ -7,6 +6,8 @@
 #include <vector>
 #include <iostream>
 #include <CLI/CLI.hpp>
+
+#include "llvmEstimator.h"
 
 
 int main(int argc, char* argv[])

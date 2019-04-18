@@ -1,5 +1,18 @@
 #include <LLVMHeaders.h>
 
+/**
+ * @brief      Generates a test set of llvm ir code (Test1)
+ *
+ * @param      context  The llvm context
+ * @param      builder  The llvm builder to assist in the ir code gen
+ * @param      module   The llvm module 
+ * @param[in]  iters    The number of iterations for the for loop entry
+ *
+ * @return     { A set of ir code that creates a for loop with the following lines:
+ * 					 d = x * y + a + 3
+ * 					 f = 3 * a
+ * 					 c = d + f}
+ */
 llvm::Function* generateTest1(llvm::LLVMContext &context, llvm::IRBuilder<> &builder, llvm::Module* module, int iters)
 {
   	llvm::Function *TestFnc =
